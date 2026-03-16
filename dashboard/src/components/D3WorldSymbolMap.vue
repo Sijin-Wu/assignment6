@@ -10,46 +10,60 @@ import * as d3 from "d3"
 
 export default {
 
-  mounted() {
+    mounted() {
 
     const width = 800
     const height = 500
 
     const svg = d3.select(this.$refs.svg)
-      .attr("width", width)
-      .attr("height", height)
+        .attr("width", width)
+        .attr("height", height)
 
     const projection = d3.geoNaturalEarth1()
-      .scale(150)
-      .translate([width/2, height/2])
+        .scale(150)
+        .translate([width/2, height/2])
 
     const path = d3.geoPath().projection(projection)
 
-    d3.json("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
-      .then(data => {
+    Promise.all([
+        d3.json("/data/world/world.geojson"),
+        d3.csv("/data/world/world-data.csv")
+    ]).then(([geoData, csvData]) => {
+
+        const populationMap = {}
+
+        csvData.forEach(d => {
+            populationMap[d.country] = +d.population
+        })
+
+        const radius = d3.scaleSqrt()
+            .domain([0, 1400000000])
+            .range([0, 25])
 
         svg.selectAll("path")
-          .data(data.features)
-          .enter()
-          .append("path")
-          .attr("d", path)
-          .attr("fill", "#eee")
-          .attr("stroke", "white")
+            .data(geoData.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("fill", "#eee")
+            .attr("stroke", "white")
 
-        // fake data circles
         svg.selectAll("circle")
-          .data(data.features)
-          .enter()
-          .append("circle")
-          .attr("cx", d => projection(d3.geoCentroid(d))[0])
-          .attr("cy", d => projection(d3.geoCentroid(d))[1])
-          .attr("r", 4)
-          .attr("fill", "red")
-          .attr("opacity", 0.6)
+            .data(geoData.features)
+            .enter()
+            .append("circle")
+            .attr("cx", d => projection(d3.geoCentroid(d))[0])
+            .attr("cy", d => projection(d3.geoCentroid(d))[1])
+            .attr("r", d => {
+                const v = populationMap[d.properties.name]
+                return v ? radius(v) : 0
+            })
+            .attr("fill", "red")
+            .attr("opacity", 0.7)
 
-      })
+    })
 
-  }
+    }
 
 }
 </script>

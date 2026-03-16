@@ -11,32 +11,49 @@ import * as d3 from "d3"
 export default {
   name: "D3WorldChoropleth",
 
-  mounted() {
+    mounted() {
+
     const width = 800
     const height = 500
 
     const svg = d3.select(this.$refs.svg)
-      .attr("width", width)
-      .attr("height", height)
+        .attr("width", width)
+        .attr("height", height)
 
     const projection = d3.geoNaturalEarth1()
-      .scale(150)
-      .translate([width/2, height/2])
+        .scale(150)
+        .translate([width/2, height/2])
 
     const path = d3.geoPath().projection(projection)
 
-    d3.json("https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson")
-      .then(data => {
+    Promise.all([
+        d3.json("/data/world/world.geojson"),
+        d3.csv("/data/world/world-data.csv")
+    ]).then(([geoData, csvData]) => {
+
+        const dataMap = {}
+
+        csvData.forEach(d => {
+            dataMap[d.country] = +d.value
+        })
+
+        const color = d3.scaleSequential()
+            .domain([0, 60000])
+            .interpolator(d3.interpolateBlues)
 
         svg.selectAll("path")
-          .data(data.features)
-          .enter()
-          .append("path")
-          .attr("d", path)
-          .attr("fill", "#69b3a2")
-          .attr("stroke", "white")
+            .data(geoData.features)
+            .enter()
+            .append("path")
+            .attr("d", path)
+            .attr("fill", d => {
+                const v = dataMap[d.properties.name]
+                return v ? color(v) : "#eee"
+            })
+            .attr("stroke", "white")
 
-      })
-  }
+    })
+
+    }
 }
 </script>
