@@ -1,11 +1,23 @@
 <template>
   <div class="container">
-    <h1>Page 4 - Deck.gl Layer</h1>
+    <section class="page-section">
+      <h2 class="mb-2">Page 4: Mapbox with deck.gl Layer</h2>
+      <p class="page-description mb-4">
+        First deck.gl layer map scaffolded for your chosen city.
+      </p>
+
+      <DeckGlHexMap />
+    </section>
   </div>
 </template>
 
 <script>
+import DeckGlHexMap from '../components/DeckGlHexMap.vue'
+
 export default {
-  name: "Page4"
+  name: 'Page4',
+  components: {
+    DeckGlHexMap
+  }
 }
 </script>

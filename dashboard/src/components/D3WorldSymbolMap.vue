@@ -1,14 +1,22 @@
 <template>
-  <div>
-    <h3>World Symbol Map</h3>
-    <svg ref="svg"></svg>
-  </div>
+    <MapFrame
+        title="D3 World Proportional Symbol Map"
+        description="World proportional symbol scaffold with local values joined to local GeoJSON."
+        :data-files="['public/data/world/world.geojson', 'public/data/world/world-data.csv']"
+    >
+        <svg ref="svg" class="w-100"></svg>
+    </MapFrame>
 </template>
 
 <script>
 import * as d3 from "d3"
+import MapFrame from './MapFrame.vue'
 
 export default {
+        name: 'D3WorldSymbolMap',
+        components: {
+            MapFrame
+        },
 
     mounted() {
 

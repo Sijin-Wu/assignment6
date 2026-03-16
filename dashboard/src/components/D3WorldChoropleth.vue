@@ -1,15 +1,22 @@
 <template>
-  <div>
-    <h3>World Choropleth Map</h3>
-    <svg ref="svg"></svg>
-  </div>
+    <MapFrame
+        title="D3 World Choropleth"
+        description="World choropleth scaffold with local GeoJSON and local CSV values."
+        :data-files="['public/data/world/world.geojson', 'public/data/world/world-data.csv']"
+    >
+        <svg ref="svg" class="w-100"></svg>
+    </MapFrame>
 </template>
 
 <script>
 import * as d3 from "d3"
+import MapFrame from './MapFrame.vue'
 
 export default {
   name: "D3WorldChoropleth",
+    components: {
+        MapFrame
+    },
 
     mounted() {
 
