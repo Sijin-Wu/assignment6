@@ -9,10 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@deck.gl/mapbox": "^9.2.11",
     "bootstrap": "^5.3.8",
     "d3": "^7.9.0",
+    "deck.gl": "^9.2.11",
+    "mapbox-gl": "^3.20.0",
+    "vega": "^6.2.0",
+    "vega-embed": "^7.1.0",
+    "vega-lite": "^6.4.2",
     "vue": "^3.5.30",
-    "vue-router": "^5.0.3"
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^6.0.5",
