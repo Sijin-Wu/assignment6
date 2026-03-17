@@ -2,7 +2,7 @@
   <MapFrame
     title="D3 World Proportional Symbol Map"
     description="Bubble size updates interactively using selected indicator and year from dashboard/data."
-    :data-files="['public/data/world/world.geojson', indicator.dataFile]"
+    :data-files="[worldGeoJSONPath, ...(indicator.dataFiles || [indicator.dataFile]).filter(Boolean)]"
   >
     <div ref="wrapRef" class="symbol-map-wrap">
       <svg ref="svgRef" class="w-100"></svg>
@@ -24,6 +24,10 @@ const props = defineProps({
   selectedYear: {
     type: Number,
     default: null
+  },
+  worldGeoJSONPath: {
+    type: String,
+    default: '/data/world/world.geojson'
   },
   indicator: {
     type: Object,
@@ -55,7 +59,7 @@ const formatValue = (value) => {
     return 'No data'
   }
 
-  if (props.indicator.key === 'gdp') {
+  if (props.indicator.key === 'gdp' || props.indicator.key === 'gdp_per_capita') {
     return `$${d3.format('.3s')(value)}`
   }
 
@@ -325,7 +329,7 @@ onMounted(async () => {
     .attr('viewBox', `0 0 ${width} ${height}`)
     .attr('preserveAspectRatio', 'xMidYMid meet')
 
-  const geoData = await d3.json('/data/world/world.geojson')
+  const geoData = await d3.json(props.worldGeoJSONPath)
   geoFeatures = geoData.features
 
   projection = d3.geoNaturalEarth1().fitSize([width, height], geoData)

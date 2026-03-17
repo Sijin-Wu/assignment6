@@ -88,6 +88,7 @@
             :values-by-code="valuesByCode"
             :selected-year="selectedYear"
             :indicator="selectedIndicator"
+            :world-geojson-path="worldGeoJSONPath"
           />
         </div>
 
@@ -96,6 +97,7 @@
             :values-by-code="valuesByCode"
             :selected-year="selectedYear"
             :indicator="selectedIndicator"
+            :world-geojson-path="worldGeoJSONPath"
           />
         </div>
       </div>
@@ -106,7 +108,7 @@
 <script>
 import D3WorldChoropleth from '../components/D3WorldChoropleth.vue'
 import D3WorldSymbolMap from '../components/D3WorldSymbolMap.vue'
-import { INDICATOR_OPTIONS, loadIndicatorDataset } from '../utils/worldIndicatorData'
+import { INDICATOR_OPTIONS, WORLD_GEOJSON_PATH, loadIndicatorDataset } from '../utils/worldIndicatorData'
 
 export default {
   name: 'Page1',
@@ -117,11 +119,12 @@ export default {
   data() {
     return {
       indicatorOptions: INDICATOR_OPTIONS,
-      indicatorKey: 'gdp',
+      indicatorKey: INDICATOR_OPTIONS[0]?.key ?? 'gdp',
       selectedYear: null,
       availableYears: [],
       valuesByCode: {},
       selectedIndicator: INDICATOR_OPTIONS[0],
+      worldGeoJSONPath: WORLD_GEOJSON_PATH,
       requestCounter: 0,
       isPlaying: false,
       playbackSpeedMs: 900,

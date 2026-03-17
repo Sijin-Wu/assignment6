@@ -76,33 +76,7 @@
 <script>
 import D3CityMap from '../components/D3CityMap.vue'
 import VegaCityMap from '../components/VegaCityMap.vue'
-
-// ---------------------------------------------------------------------------
-// NYC Community Districts — Housing Database
-// GeoJSON join key: 'commntydst'  (matches CSV column of same name)
-// Data files live in /public/data/nyc/
-// ---------------------------------------------------------------------------
-const CITY_NAME = 'New York City'
-const JOIN_KEY  = 'commntydst'   // property in the cleaned GeoJSON features
-
-const INDICATOR_OPTIONS = [
-  // Annual housing unit completions (net class A units)
-  { key: 'comp2024', label: 'Units Completed 2024',        unit: 'units', format: ',.0f' },
-  { key: 'comp2023', label: 'Units Completed 2023',        unit: 'units', format: ',.0f' },
-  { key: 'comp2022', label: 'Units Completed 2022',        unit: 'units', format: ',.0f' },
-  { key: 'comp2021', label: 'Units Completed 2021',        unit: 'units', format: ',.0f' },
-  { key: 'comp2020', label: 'Units Completed 2020',        unit: 'units', format: ',.0f' },
-  { key: 'comp2019', label: 'Units Completed 2019',        unit: 'units', format: ',.0f' },
-  { key: 'comp2018', label: 'Units Completed 2018',        unit: 'units', format: ',.0f' },
-  { key: 'comp2017', label: 'Units Completed 2017',        unit: 'units', format: ',.0f' },
-  { key: 'comp2016', label: 'Units Completed 2016',        unit: 'units', format: ',.0f' },
-  { key: 'comp2015', label: 'Units Completed 2015',        unit: 'units', format: ',.0f' },
-  // Pipeline status (as of latest data)
-  { key: 'cenunits20', label: 'Census Housing Units 2020', unit: 'units', format: ',.0f' },
-  { key: 'filed',      label: 'Filed Applications',        unit: 'units', format: ',.0f' },
-  { key: 'permitted',  label: 'Permitted Units',           unit: 'units', format: ',.0f' },
-]
-// ---------------------------------------------------------------------------
+import { PAGE2 } from '../config'
 
 export default {
   name: 'Page2',
@@ -113,10 +87,12 @@ export default {
 
   data() {
     return {
-      cityName: CITY_NAME,
-      joinKey: JOIN_KEY,
-      indicatorOptions: INDICATOR_OPTIONS,
-      selectedIndicator: INDICATOR_OPTIONS[0].key,
+      cityName: PAGE2.cityName,
+      joinKey: PAGE2.joinKey,
+      indicatorOptions: PAGE2.indicators,
+      selectedIndicator: PAGE2.indicators[0].key,
+      geoJSONPath: PAGE2.geoJSONPath,
+      csvPath: PAGE2.csvPath,
 
       // Raw loaded data
       geoData: null,       // parsed GeoJSON FeatureCollection
@@ -160,12 +136,9 @@ export default {
       this.loading = true
       this.error = null
       try {
-        // Files must be placed at:
-        //   <project-root>/public/data/nyc/city-neighborhoods.geojson
-        //   <project-root>/public/data/nyc/city-indicator.csv
         const [geoRes, csvRes] = await Promise.all([
-          fetch('/data/nyc/city-neighborhoods.geojson'),
-          fetch('/data/nyc/housing-units.csv')
+          fetch(this.geoJSONPath),
+          fetch(this.csvPath)
         ])
 
         if (!geoRes.ok) throw new Error(`GeoJSON fetch failed: ${geoRes.status}`)
@@ -206,14 +179,14 @@ export default {
         const row = {}
         headers.forEach((h, i) => {
           const raw = vals[i] ?? ''
-          if (i === 0) {
-            row[h] = raw  // commntydst — keep as string for join
+          if (h === this.joinKey) {
+            row[h] = raw  // keep join key as string
           } else {
             // Strip thousands commas, then cast to number
             row[h] = raw === '' ? NaN : Number(raw.replace(/,/g, ''))
           }
         })
-        row.id = row[headers[0]]  // alias first col as "id" for the join
+        row.id = row[this.joinKey] ?? row[headers[0]]
         return row
       })
     }

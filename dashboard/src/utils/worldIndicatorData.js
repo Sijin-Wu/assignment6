@@ -1,61 +1,28 @@
 import * as d3 from 'd3'
+import { PAGE1 } from '../config'
 
-const INDICATOR_CONFIG = {
-    gdp: {
-        key: 'gdp',
-        label: 'GDP (current US$)',
-        unit: 'US$ current',
-        dataFile: 'data/gdp.csv',
-        type: 'wide',
-        fileUrl: new URL('../../data/gdp.csv', import.meta.url),
-        codeField: 'Country Code',
-        nameField: 'Country Name'
-    },
-    gdpPerCapita: {
-        key: 'gdpPerCapita',
-        label: 'GDP per capita (current US$)',
-        unit: 'US$ per person',
-        dataFile: 'data/gdp.csv + data/population.csv',
-        type: 'derived',
-        sourceIndicators: ['gdp', 'population']
-    },
-    fertility: {
-        key: 'fertility',
-        label: 'Fertility rate',
-        unit: 'births per woman',
-        dataFile: 'data/fertility_rate.csv',
-        type: 'wide',
-        fileUrl: new URL('../../data/fertility_rate.csv', import.meta.url),
-        codeField: 'REF_AREA',
-        nameField: 'REF_AREA_LABEL'
-    },
-    lifeExpectancy: {
-        key: 'lifeExpectancy',
-        label: 'Life expectancy',
-        unit: 'years',
-        dataFile: 'data/life_expectancy.csv',
-        type: 'long',
-        fileUrl: new URL('../../data/life_expectancy.csv', import.meta.url),
-        codeField: 'Code',
-        nameField: 'Entity',
-        yearField: 'Year',
-        valueField: 'Life expectancy'
-    },
-    population: {
-        key: 'population',
-        label: 'Population',
-        unit: 'people',
-        dataFile: 'data/population.csv',
-        type: 'long',
-        fileUrl: new URL('../../data/population.csv', import.meta.url),
-        codeField: 'Code',
-        nameField: 'Entity',
-        yearField: 'Year',
-        valueField: 'Population'
+const INDICATOR_OPTIONS_FROM_CONFIG = PAGE1.indicators.map((indicator) => {
+    const dataFiles = indicator.type === 'derived'
+        ? (indicator.sourceIndicators || [])
+            .map((sourceKey) => PAGE1.indicators.find((entry) => entry.key === sourceKey)?.csvPath)
+            .filter(Boolean)
+        : [indicator.csvPath].filter(Boolean)
+
+    return {
+        ...indicator,
+        nameField: indicator.nameColumn,
+        codeField: indicator.idColumn,
+        yearField: indicator.yearColumn,
+        valueField: indicator.valueColumn,
+        dataFile: indicator.csvPath || dataFiles.join(' + '),
+        dataFiles
     }
-}
+})
 
-export const INDICATOR_OPTIONS = Object.values(INDICATOR_CONFIG)
+const INDICATOR_CONFIG = Object.fromEntries(INDICATOR_OPTIONS_FROM_CONFIG.map((entry) => [entry.key, entry]))
+
+export const INDICATOR_OPTIONS = INDICATOR_OPTIONS_FROM_CONFIG
+export const WORLD_GEOJSON_PATH = PAGE1.worldGeoJSON
 
 const datasetCache = new Map()
 
@@ -69,7 +36,7 @@ const parseNumericValue = (value) => {
 }
 
 const parseWideDataset = async (config) => {
-    const rows = await d3.csv(config.fileUrl)
+    const rows = await d3.csv(config.csvPath)
     const firstRow = rows[0] ?? {}
 
     const years = Object.keys(firstRow)
@@ -106,7 +73,7 @@ const parseWideDataset = async (config) => {
 }
 
 const parseLongDataset = async (config) => {
-    const rows = await d3.csv(config.fileUrl)
+    const rows = await d3.csv(config.csvPath)
     const valuesByYear = new Map()
     const namesByCode = new Map()
 
@@ -180,14 +147,16 @@ export const loadIndicatorDataset = async (indicatorKey) => {
     }
 
     let parsed
-    if (config.type === 'wide') {
+    const resolvedType = config.type || (config.sourceIndicators ? 'derived' : (config.yearField && config.valueField ? 'long' : 'wide'))
+
+    if (resolvedType === 'wide') {
         parsed = await parseWideDataset(config)
-    } else if (config.type === 'long') {
+    } else if (resolvedType === 'long') {
         parsed = await parseLongDataset(config)
-    } else if (config.type === 'derived') {
+    } else if (resolvedType === 'derived') {
         parsed = await deriveGdpPerCapitaDataset(config)
     } else {
-        throw new Error(`Unsupported indicator type: ${config.type}`)
+        throw new Error(`Unsupported indicator type: ${resolvedType}`)
     }
 
     const dataset = {

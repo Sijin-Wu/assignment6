@@ -2,7 +2,7 @@
   <MapFrame
     title="D3 World Choropleth"
     description="Quantile choropleth using selected indicator and year from dashboard/data."
-    :data-files="['public/data/world/world.geojson', indicator.dataFile]"
+    :data-files="[worldGeoJSONPath, ...(indicator.dataFiles || [indicator.dataFile]).filter(Boolean)]"
   >
     <svg ref="svgRef" class="w-100"></svg>
   </MapFrame>
@@ -21,6 +21,10 @@ const props = defineProps({
   selectedYear: {
     type: Number,
     default: null
+  },
+  worldGeoJSONPath: {
+    type: String,
+    default: '/data/world/world.geojson'
   },
   indicator: {
     type: Object,
@@ -48,7 +52,7 @@ const formatValue = (value) => {
     return 'No data'
   }
 
-  if (props.indicator.key === 'gdp') {
+  if (props.indicator.key === 'gdp' || props.indicator.key === 'gdp_per_capita') {
     return `$${d3.format('.3s')(value)}`
   }
 
@@ -105,7 +109,7 @@ const drawLegend = (colorScale) => {
         return d3.format('.2s')(entry.extent[0])
       }
 
-      if (props.indicator.key === 'gdp') {
+      if (props.indicator.key === 'gdp' || props.indicator.key === 'gdp_per_capita') {
         return `$${d3.format('.2s')(entry.extent[0])}`
       }
 
@@ -157,7 +161,7 @@ onMounted(async () => {
     .attr('viewBox', `0 0 ${width} ${height}`)
     .attr('preserveAspectRatio', 'xMidYMid meet')
 
-  const geoData = await d3.json('/data/world/world.geojson')
+  const geoData = await d3.json(props.worldGeoJSONPath)
   geoFeatures = geoData.features
 
   const projection = d3.geoNaturalEarth1().fitSize([width, height - 40], geoData)
