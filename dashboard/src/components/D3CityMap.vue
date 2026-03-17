@@ -10,8 +10,11 @@
         <span class="text-muted">Waiting for data…</span>
       </div>
 
-      <!-- SVG map renders here -->
-      <svg ref="svg" class="d3-city-svg w-100"></svg>
+      <!-- Map wrapper (tooltip positioned relative to this) -->
+      <div ref="mapWrap" class="map-wrap">
+        <svg ref="svg" class="d3-city-svg w-100"></svg>
+        <div ref="tooltipEl" class="d3city-tooltip"></div>
+      </div>
 
       <!-- Legend -->
       <div ref="legend" class="map-legend position-absolute bottom-0 start-0 m-3 p-2 bg-white bg-opacity-90 rounded shadow-sm"></div>
@@ -33,22 +36,27 @@ export default {
     /** { key, label, unit, format } */
     indicator: { type: Object, default: () => ({}) },
     /** GeoJSON property key used for joining */
-    joinKey: { type: String, default: 'id' }
+    joinKey: { type: String, default: 'id' },
+    /** Map<String(boro_cd), crosswalk row> for tooltip labels */
+    nameMap: { type: Map, default: () => new Map() }
   },
 
   data() {
     return {
-      resizeObserver: null
+      resizeObserver: null,
+      tooltip: null
     }
   },
 
   watch: {
     geoData()      { this.draw() },
     indicatorData(){ this.draw() },
-    indicator()    { this.draw() }
+    indicator()    { this.draw() },
+    nameMap()      { this.draw() }
   },
 
   mounted() {
+    this.tooltip = d3.select(this.$refs.tooltipEl)
     this.resizeObserver = new ResizeObserver(() => this.draw())
     this.resizeObserver.observe(this.$refs.svg)
     if (this.geoData) this.draw()
@@ -59,6 +67,12 @@ export default {
   },
 
   methods: {
+    moveTooltip(event) {
+      if (!this.tooltip || !this.$refs.mapWrap) return
+      const [x, y] = d3.pointer(event, this.$refs.mapWrap)
+      this.tooltip.style('left', `${x + 14}px`).style('top', `${y - 10}px`)
+    },
+
     draw() {
       const svg = d3.select(this.$refs.svg)
       svg.selectAll('*').remove()
@@ -86,6 +100,7 @@ export default {
       // ------------------------------------------------------------------
       // Draw neighborhoods
       // ------------------------------------------------------------------
+      const self = this
       svg.append('g')
         .selectAll('path')
         .data(this.geoData.features)
@@ -98,12 +113,37 @@ export default {
           })
           .attr('stroke', '#fff')
           .attr('stroke-width', 0.5)
-        .append('title')
-          .text(d => {
-            const id  = String(d.properties[this.joinKey])
-            const val = this.indicatorData.get(id)
-            const fmt = d3.format(this.indicator?.format ?? ',.0f')
-            return `CD ${id}: ${val != null ? fmt(val) : 'N/A'}`
+          .attr('cursor', 'pointer')
+          .on('mouseenter', function (event, d) {
+            const id   = String(d.properties[self.joinKey])
+            const val  = self.indicatorData.get(id)
+            const info = self.nameMap?.get(id)
+            const name    = info?.cd_name    ?? ('CD ' + id)
+            const borough = info?.borough    ?? ''
+            const fmt  = d3.format(self.indicator?.format ?? ',.0f')
+            const valStr = (val != null && isFinite(val)) ? fmt(val) : 'N/A'
+
+            d3.select(this).raise().transition().duration(100)
+              .attr('stroke', '#1e293b').attr('stroke-width', 1.5)
+
+            if (self.tooltip) {
+              self.tooltip
+                .html(`
+                  <div class="tt-title">${name}</div>
+                  ${borough ? `<div class="tt-row"><span>Borough</span><strong>${borough}</strong></div>` : ''}
+                  <div class="tt-row"><span>${self.indicator?.label ?? 'Value'}</span><strong>${valStr}</strong></div>
+                `)
+                .style('opacity', 1)
+              self.moveTooltip(event)
+            }
+          })
+          .on('mousemove', function (event) {
+            self.moveTooltip(event)
+          })
+          .on('mouseleave', function () {
+            d3.select(this).transition().duration(120)
+              .attr('stroke', '#fff').attr('stroke-width', 0.5)
+            if (self.tooltip) self.tooltip.style('opacity', 0)
           })
 
       // ------------------------------------------------------------------
@@ -166,4 +206,39 @@ export default {
   color: #94a3b8;
 }
 .map-legend { pointer-events: none; }
+
+.map-wrap {
+  position: relative;
+}
+
+.d3city-tooltip {
+  position: absolute;
+  z-index: 20;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.93);
+  color: #e2e8f0;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.35);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  font-size: 0.82rem;
+}
+
+.d3city-tooltip :deep(.tt-title) {
+  font-weight: 700;
+  font-size: 0.88rem;
+  margin-bottom: 0.4rem;
+  line-height: 1.3;
+}
+
+.d3city-tooltip :deep(.tt-row) {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.6rem;
+  margin-bottom: 0.15rem;
+}
 </style>

@@ -129,6 +129,9 @@ export const PAGE2 = {
     /** Path to the indicator CSV. */
     csvPath: '/data/nyc/housing-units.csv',
 
+    /** Path to the community-district name crosswalk CSV. */
+    crosswalkPath: '/data/nyc/cd-crosswalk.csv',
+
     /**
      * The GeoJSON  properties  field whose value matches the CSV id column.
      * For the NYC Community Districts dataset this is  'commntydst'.

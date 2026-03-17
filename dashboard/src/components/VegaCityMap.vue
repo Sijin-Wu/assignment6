@@ -28,7 +28,9 @@ export default {
     /** { key, label, unit, format } */
     indicator: { type: Object, default: () => ({}) },
     /** GeoJSON property key used for joining */
-    joinKey: { type: String, default: 'id' }
+    joinKey: { type: String, default: 'id' },
+    /** Map<String(boro_cd), crosswalk row> for tooltip labels */
+    nameMap: { type: Map, default: () => new Map() }
   },
 
   data() {
@@ -62,12 +64,18 @@ export default {
       if (!this.geoData || !this.indicatorData.size) return
 
       // -------------------------------------------------------------------
-      // Build a flat lookup array from indicatorData so Vega can join it
+      // Build a flat lookup array from indicatorData so Vega can join it,
+      // enriched with community-district names from the crosswalk.
       // -------------------------------------------------------------------
-      const lookupRows = [...this.indicatorData.entries()].map(([id, value]) => ({
-        id: String(id),
-        value
-      }))
+      const lookupRows = [...this.indicatorData.entries()].map(([id, value]) => {
+        const info = this.nameMap?.get(String(id))
+        return {
+          id:      String(id),
+          value,
+          cd_name: info?.cd_name   ?? ('CD ' + id),
+          borough: info?.borough   ?? ''
+        }
+      })
 
       const containerW = this.$refs.vegaContainer.clientWidth || 500
 
@@ -87,13 +95,13 @@ export default {
         },
 
         transform: [
-          // Lookup numeric value for each feature
+          // Lookup numeric value + district name for each feature
           {
             lookup: `properties.${this.joinKey}`,
             from: {
               data: { values: lookupRows },
               key: 'id',
-              fields: ['value']
+              fields: ['value', 'cd_name', 'borough']
             }
           }
         ],
@@ -119,9 +127,14 @@ export default {
           },
           tooltip: [
             {
-              field: `properties.${this.joinKey}`,
+              field: 'cd_name',
               type: 'nominal',
-              title: 'Community District'
+              title: 'Neighborhood(s)'
+            },
+            {
+              field: 'borough',
+              type: 'nominal',
+              title: 'Borough'
             },
             {
               field: 'value',
