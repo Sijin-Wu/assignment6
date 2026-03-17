@@ -14,6 +14,12 @@
       <div ref="mapWrap" class="map-wrap">
         <svg ref="svg" class="d3-city-svg w-100"></svg>
         <div ref="tooltipEl" class="d3city-tooltip"></div>
+        <div class="zoom-controls">
+          <button class="zoom-btn" title="Zoom in" @click="zoomIn">+</button>
+          <button class="zoom-btn" title="Zoom out" @click="zoomOut">−</button>
+          <button class="zoom-btn zoom-reset" title="Reset view" @click="resetZoom">⌂</button>
+        </div>
+        <div class="zoom-hint">Scroll to zoom · Drag to pan</div>
       </div>
 
       <!-- Legend -->
@@ -57,6 +63,9 @@ export default {
 
   mounted() {
     this.tooltip = d3.select(this.$refs.tooltipEl)
+    this._zoomBehavior = null
+    this._savedTransform = null
+    this._svgSel = null
     this.resizeObserver = new ResizeObserver(() => this.draw())
     this.resizeObserver.observe(this.$refs.svg)
     if (this.geoData) this.draw()
@@ -67,6 +76,13 @@ export default {
   },
 
   methods: {
+    zoomIn()    { this._svgSel?.transition().duration(350).call(this._zoomBehavior.scaleBy, 2) },
+    zoomOut()   { this._svgSel?.transition().duration(350).call(this._zoomBehavior.scaleBy, 0.5) },
+    resetZoom() {
+      this._savedTransform = null
+      this._svgSel?.transition().duration(400).call(this._zoomBehavior.transform, d3.zoomIdentity)
+    },
+
     moveTooltip(event) {
       if (!this.tooltip || !this.$refs.mapWrap) return
       const [x, y] = d3.pointer(event, this.$refs.mapWrap)
@@ -74,34 +90,29 @@ export default {
     },
 
     draw() {
-      const svg = d3.select(this.$refs.svg)
-      svg.selectAll('*').remove()
+      const svgEl = d3.select(this.$refs.svg)
+      svgEl.selectAll('*').remove()
 
       if (!this.geoData || !this.indicatorData.size) return
 
-      const el    = this.$refs.svg
-      const W     = el.clientWidth  || 500
-      const H     = Math.round(W * 0.75)
-      svg.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H)
+      const el = this.$refs.svg
+      const W  = el.clientWidth || 500
+      const H  = Math.round(W * 0.75)
+      svgEl.attr('viewBox', `0 0 ${W} ${H}`).attr('height', H)
 
-      // ------------------------------------------------------------------
-      // Projection — fit to bounds of the GeoJSON
-      // ------------------------------------------------------------------
       const projection = d3.geoMercator().fitSize([W, H], this.geoData)
       const path       = d3.geoPath(projection)
 
-      // ------------------------------------------------------------------
-      // Color scale
-      // ------------------------------------------------------------------
       const values = [...this.indicatorData.values()].filter(v => isFinite(v))
       const [vMin, vMax] = d3.extent(values)
       const colorScale = d3.scaleSequential(d3.interpolateBlues).domain([vMin, vMax])
 
-      // ------------------------------------------------------------------
-      // Draw neighborhoods
-      // ------------------------------------------------------------------
+      // Zoomable group — restore previous transform so zoom persists across redraws
+      const mapGroup = svgEl.append('g')
+      if (this._savedTransform) mapGroup.attr('transform', this._savedTransform.toString())
+
       const self = this
-      svg.append('g')
+      mapGroup
         .selectAll('path')
         .data(this.geoData.features)
         .join('path')
@@ -112,19 +123,20 @@ export default {
             return val != null ? colorScale(val) : '#e2e8f0'
           })
           .attr('stroke', '#fff')
-          .attr('stroke-width', 0.5)
-          .attr('cursor', 'pointer')
+          .attr('stroke-width', this._savedTransform ? 0.5 / this._savedTransform.k : 0.5)
+          .attr('cursor', 'grab')
           .on('mouseenter', function (event, d) {
-            const id   = String(d.properties[self.joinKey])
-            const val  = self.indicatorData.get(id)
-            const info = self.nameMap?.get(id)
-            const name    = info?.cd_name    ?? ('CD ' + id)
-            const borough = info?.borough    ?? ''
-            const fmt  = d3.format(self.indicator?.format ?? ',.0f')
+            const k      = self._savedTransform?.k ?? 1
+            const id     = String(d.properties[self.joinKey])
+            const val    = self.indicatorData.get(id)
+            const info   = self.nameMap?.get(id)
+            const name    = info?.cd_name ?? ('CD ' + id)
+            const borough = info?.borough ?? ''
+            const fmt    = d3.format(self.indicator?.format ?? ',.0f')
             const valStr = (val != null && isFinite(val)) ? fmt(val) : 'N/A'
 
             d3.select(this).raise().transition().duration(100)
-              .attr('stroke', '#1e293b').attr('stroke-width', 1.5)
+              .attr('stroke', '#1e293b').attr('stroke-width', 1.5 / k)
 
             if (self.tooltip) {
               self.tooltip
@@ -137,19 +149,35 @@ export default {
               self.moveTooltip(event)
             }
           })
-          .on('mousemove', function (event) {
-            self.moveTooltip(event)
-          })
+          .on('mousemove', function (event) { self.moveTooltip(event) })
           .on('mouseleave', function () {
+            const k = self._savedTransform?.k ?? 1
             d3.select(this).transition().duration(120)
-              .attr('stroke', '#fff').attr('stroke-width', 0.5)
+              .attr('stroke', '#fff').attr('stroke-width', 0.5 / k)
             if (self.tooltip) self.tooltip.style('opacity', 0)
           })
 
-      // ------------------------------------------------------------------
-      // Legend (linear gradient)
-      // ------------------------------------------------------------------
+      // Legend fixed outside the zoomable group
       this.drawLegend(colorScale, vMin, vMax, W)
+
+      // Set up zoom — recreated on each draw so translateExtent matches current W/H
+      const zb = d3.zoom()
+        .scaleExtent([1, 12])
+        .translateExtent([[0, 0], [W, H]])
+        .on('start', () => { svgEl.attr('cursor', 'grabbing'); if (self.tooltip) self.tooltip.style('opacity', 0) })
+        .on('zoom', (event) => {
+          self._savedTransform = event.transform
+          mapGroup.attr('transform', event.transform)
+          mapGroup.selectAll('path').attr('stroke-width', 0.5 / event.transform.k)
+        })
+        .on('end', () => svgEl.attr('cursor', null))
+
+      svgEl.call(zb)
+      svgEl.on('dblclick.zoom', null)
+      if (this._savedTransform) svgEl.call(zb.transform, this._savedTransform)
+
+      this._zoomBehavior = zb
+      this._svgSel = svgEl
     },
 
     drawLegend(scale, min, max, W) {
@@ -209,6 +237,50 @@ export default {
 
 .map-wrap {
   position: relative;
+  overflow: hidden;
+}
+
+.zoom-controls {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  z-index: 20;
+}
+
+.zoom-btn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #334155;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: background 120ms;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.12);
+}
+.zoom-btn:hover {
+  background: #fff;
+  border-color: #94a3b8;
+}
+.zoom-reset { font-size: 0.8rem; margin-top: 2px; }
+
+.zoom-hint {
+  position: absolute;
+  bottom: 4px;
+  right: 6px;
+  font-size: 0.7rem;
+  color: #94a3b8;
+  pointer-events: none;
+  user-select: none;
 }
 
 .d3city-tooltip {

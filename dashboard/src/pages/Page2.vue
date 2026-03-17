@@ -10,10 +10,25 @@
       <div class="card border-0 shadow-sm mb-4">
         <div class="card-body pb-2">
 
+          <!-- ── Dataset toggle ────────────────────────────────────── -->
+          <div class="d-flex align-items-center gap-2 mb-3">
+            <span class="ctrl-label me-1">Dataset</span>
+            <button
+              class="pill-btn"
+              :class="{ active: selectedDataset === 'housing' }"
+              @click="switchDataset('housing')"
+            >Net Housing Units</button>
+            <button
+              class="pill-btn"
+              :class="{ active: selectedDataset === 'population' }"
+              @click="switchDataset('population')"
+            >Population</button>
+          </div>
+
           <!-- ── Year timeline ─────────────────────────────────────── -->
           <div class="mb-3">
             <div class="d-flex justify-content-between align-items-baseline mb-2">
-              <span class="ctrl-label">{{ timeSeriesLabel }}</span>
+              <span class="ctrl-label">{{ activeTimeSeriesLabel }}</span>
               <span class="selected-year-badge">{{ selectedYear }}</span>
             </div>
 
@@ -22,7 +37,7 @@
               <div class="timeline-line"></div>
 
               <button
-                v-for="entry in years"
+                v-for="entry in activeYears"
                 :key="entry.key"
                 class="timeline-stop"
                 :class="{ active: selectedKey === entry.key }"
@@ -33,10 +48,37 @@
                 <span class="timeline-label">{{ entry.year }}</span>
               </button>
             </div>
+
+            <!-- Play / pause controls -->
+            <div class="d-flex flex-wrap align-items-center gap-2 gap-sm-3 mt-2">
+              <button
+                class="btn btn-sm"
+                :class="isPlaying ? 'btn-outline-danger' : 'btn-outline-primary'"
+                :disabled="activeYears.length < 2 || isSnapshot"
+                @click="togglePlayback"
+              >
+                {{ isPlaying ? 'Pause' : 'Play' }}
+              </button>
+
+              <div class="d-flex align-items-center gap-2">
+                <label for="p2-speed-select" class="form-label mb-0 fw-semibold">Speed</label>
+                <select
+                  id="p2-speed-select"
+                  class="form-select form-select-sm speed-select"
+                  v-model.number="playbackSpeedMs"
+                >
+                  <option v-for="opt in playbackSpeedOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+                </select>
+              </div>
+
+              <span class="small text-muted">
+                {{ isPlaying ? 'Animating through years…' : 'Animation paused' }}
+              </span>
+            </div>
           </div>
 
-          <!-- ── Snapshot indicator pills ──────────────────────────── -->
-          <div class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
+          <!-- ── Snapshot indicator pills (housing only) ──────────── -->
+          <div v-if="selectedDataset === 'housing'" class="d-flex flex-wrap align-items-center gap-2 pt-2 border-top">
             <span class="ctrl-label me-1">Snapshot</span>
             <button
               v-for="snap in snapshotIndicators"
@@ -106,14 +148,30 @@ export default {
       years:              PAGE2.years,
       snapshotIndicators: PAGE2.snapshotIndicators,
 
+      // dataset toggle: 'housing' | 'population'
+      selectedDataset: 'housing',
+
       // active selection — either a year entry or a snapshot entry
       selectedKey:  defaultYear.key,
-      selectedYear: defaultYear.year,   // null when a snapshot is active
+      selectedYear: defaultYear.year,
       isSnapshot:   false,
+
+      // playback
+      isPlaying:         false,
+      playbackSpeedMs:   900,
+      playbackTimerId:   null,
+      playbackSpeedOptions: [
+        { label: '0.5x (1800 ms)', value: 1800 },
+        { label: '1x (900 ms)',    value: 900  },
+        { label: '1.5x (600 ms)', value: 600  },
+        { label: '2x (450 ms)',   value: 450  },
+        { label: '3x (300 ms)',   value: 300  }
+      ],
 
       // loaded data
       geoData:        null,
       indicatorRows:  [],
+      popRows:        [],
       crosswalkRows:  [],
       loading:        false,
       error:          null,
@@ -128,8 +186,24 @@ export default {
       return this.geoData?.features?.length ?? 0
     },
 
+    activeYears() {
+      return this.selectedDataset === 'population' ? PAGE2.popYears : PAGE2.years
+    },
+
+    activeTimeSeriesLabel() {
+      return this.selectedDataset === 'population' ? PAGE2.popLabel : PAGE2.timeSeriesLabel
+    },
+
     /** Metadata object passed down to map components for legend / tooltip labels. */
     currentMeta() {
+      if (this.selectedDataset === 'population') {
+        return {
+          key:    this.selectedKey,
+          label:  `${PAGE2.popLabel} (${this.selectedYear ?? ''})`,
+          unit:   PAGE2.popUnit,
+          format: PAGE2.popFormat,
+        }
+      }
       if (this.isSnapshot) {
         return this.snapshotIndicators.find(s => s.key === this.selectedKey)
           ?? this.snapshotIndicators[0]
@@ -153,10 +227,11 @@ export default {
 
     /** Map<districtId, number> for the currently selected column. */
     indicatorData() {
-      if (!this.indicatorRows.length) return new Map()
+      const rows = this.selectedDataset === 'population' ? this.popRows : this.indicatorRows
+      if (!rows.length) return new Map()
       const key = this.selectedKey
       return new Map(
-        this.indicatorRows.map(row => [String(row.id), row[key]])
+        rows.map(row => [String(row.id), row[key]])
       )
     },
   },
@@ -165,40 +240,135 @@ export default {
     await this.loadData()
   },
 
+  watch: {
+    playbackSpeedMs() {
+      if (this.isPlaying) this.restartPlaybackTimer()
+    }
+  },
+
+  beforeUnmount() {
+    this.stopPlayback()
+  },
+
   methods: {
     selectYear(entry) {
+      this.stopPlayback()
       this.selectedKey  = entry.key
       this.selectedYear = entry.year
       this.isSnapshot   = false
     },
     selectSnapshot(snap) {
+      this.stopPlayback()
       this.selectedKey  = snap.key
       this.selectedYear = null
       this.isSnapshot   = true
+    },
+    switchDataset(key) {
+      if (this.selectedDataset === key) return
+      this.stopPlayback()
+      this.selectedDataset = key
+      this.isSnapshot      = false
+      const defaultYear = key === 'population' ? PAGE2.popYears.at(-1) : PAGE2.years.at(-1)
+      this.selectedKey  = defaultYear.key
+      this.selectedYear = defaultYear.year
+    },
+
+    togglePlayback() {
+      if (this.isPlaying) { this.stopPlayback(); return }
+      if (this.activeYears.length < 2) return
+      // Loop back to start if at the last year
+      if (this.selectedYear === this.activeYears.at(-1)?.year) {
+        this.selectedKey  = this.activeYears[0].key
+        this.selectedYear = this.activeYears[0].year
+      }
+      this.isPlaying = true
+      this.restartPlaybackTimer()
+    },
+    restartPlaybackTimer() {
+      if (this.playbackTimerId != null) clearInterval(this.playbackTimerId)
+      this.playbackTimerId = setInterval(() => this.stepYearForward(), this.playbackSpeedMs)
+    },
+    stepYearForward() {
+      const years = this.activeYears
+      if (years.length < 2) { this.stopPlayback(); return }
+      const idx = years.findIndex(e => e.key === this.selectedKey)
+      if (idx < 0) { this.selectedKey = years[0].key; this.selectedYear = years[0].year; return }
+      if (idx >= years.length - 1) { this.stopPlayback(); return }
+      this.selectedKey  = years[idx + 1].key
+      this.selectedYear = years[idx + 1].year
+    },
+    stopPlayback() {
+      this.isPlaying = false
+      if (this.playbackTimerId != null) { clearInterval(this.playbackTimerId); this.playbackTimerId = null }
     },
 
     async loadData() {
       this.loading = true
       this.error   = null
       try {
-        const [geoRes, csvRes, cwRes] = await Promise.all([
+        const [geoRes, csvRes, cwRes, popRes] = await Promise.all([
           fetch(PAGE2.geoJSONPath),
           fetch(PAGE2.csvPath),
           fetch(PAGE2.crosswalkPath),
+          fetch(PAGE2.popCsvPath),
         ])
         if (!geoRes.ok) throw new Error(`GeoJSON fetch failed: ${geoRes.status}`)
         if (!csvRes.ok) throw new Error(`CSV fetch failed: ${csvRes.status}`)
         if (!cwRes.ok)  throw new Error(`Crosswalk fetch failed: ${cwRes.status}`)
+        if (!popRes.ok) throw new Error(`Population CSV fetch failed: ${popRes.status}`)
 
         this.geoData       = await geoRes.json()
         this.indicatorRows = this.parseCSV(await csvRes.text())
         this.crosswalkRows = this.parseCrosswalkCSV(await cwRes.text())
+        this.popRows       = this.parsePopulationCSV(await popRes.text())
       } catch (err) {
         console.error('[Page2] data load error:', err)
         this.error = err.message
       } finally {
         this.loading = false
       }
+    },
+
+    /**
+     * Parse the population-by-community-district CSV.
+     * Computes boro_cd (e.g. Bronx CD 1 → 201) from Borough + CD Number.
+     * Produces rows like: { id: '201', pop1970: 138557, pop1980: 78441, ... }
+     */
+    parsePopulationCSV(text) {
+      const BORO_PREFIX = {
+        'Manhattan': 100, 'Bronx': 200, 'Brooklyn': 300,
+        'Queens': 400, 'Staten Island': 500
+      }
+      const lines = text.trim().split('\n')
+      // headers are quoted: "Borough","CD Number","CD Name","1970 Population",...
+      const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, '').replace(/\r$/, ''))
+      return lines.slice(1).map(line => {
+        // parse quoted fields (quoted numbers contain commas, e.g. "138,557")
+        const vals = []
+        let inQ = false, cur = ''
+        for (const ch of line) {
+          if (ch === '"')           { inQ = !inQ }
+          else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = '' }
+          else                       { cur += ch }
+        }
+        vals.push(cur.trim())
+
+        const borough = vals[0] ?? ''
+        const cdNum   = parseInt(vals[1] ?? '0', 10)
+        const prefix  = BORO_PREFIX[borough] ?? 0
+        if (!prefix) return null
+
+        const row = { id: String(prefix + cdNum) }
+        headers.forEach((h, i) => {
+          if (i < 3) return  // skip Borough, CD Number, CD Name
+          const yearMatch = h.match(/(\d{4})/)
+          if (yearMatch) {
+            const raw = (vals[i] ?? '').replace(/,/g, '')
+            row[`pop${yearMatch[1]}`] = raw === '' ? NaN : Number(raw)
+          }
+        })
+        return row
+      }).filter(Boolean)
     },
 
     /**
@@ -247,6 +417,8 @@ export default {
 
 <style scoped>
 .page-description { color: #57534e; }
+
+.speed-select { width: 9.2rem; }
 
 /* ── shared label ─────────────────────────────────────────────────── */
 .ctrl-label {

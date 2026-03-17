@@ -132,6 +132,19 @@ export const PAGE2 = {
     /** Path to the community-district name crosswalk CSV. */
     crosswalkPath: '/data/nyc/cd-crosswalk.csv',
 
+    /** Path to the NYC population by community district CSV. */
+    popCsvPath: '/data/nyc/New_York_City_Population_By_Community_Districts_20260316.csv',
+    popLabel: 'Population',
+    popUnit: 'people',
+    popFormat: ',.0f',
+    popYears: [
+        { key: 'pop1970', year: 1970 },
+        { key: 'pop1980', year: 1980 },
+        { key: 'pop1990', year: 1990 },
+        { key: 'pop2000', year: 2000 },
+        { key: 'pop2010', year: 2010 },
+    ],
+
     /**
      * The GeoJSON  properties  field whose value matches the CSV id column.
      * For the NYC Community Districts dataset this is  'commntydst'.

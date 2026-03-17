@@ -43,7 +43,8 @@ export default {
   watch: {
     geoData()       { this.render() },
     indicatorData() { this.render() },
-    indicator()     { this.render() }
+    indicator()     { this.render() },
+    nameMap()       { this.render() }
   },
 
   mounted() {
@@ -88,16 +89,21 @@ export default {
         height: Math.round((containerW - 24) * 0.75),
         config: { view: { stroke: null } },
 
-        // Inline the GeoJSON directly so no external fetch is needed
+        // Inline the full FeatureCollection; Vega extracts the features array via `property`.
         data: {
-          values: this.geoData.features,
+          values: this.geoData,
           format: { type: 'json', property: 'features' }
         },
 
         transform: [
+          // Stringify the numeric join key so it matches the string keys in lookupRows
+          {
+            calculate: `toString(datum.properties.${this.joinKey})`,
+            as: 'joinId'
+          },
           // Lookup numeric value + district name for each feature
           {
-            lookup: `properties.${this.joinKey}`,
+            lookup: 'joinId',
             from: {
               data: { values: lookupRows },
               key: 'id',
