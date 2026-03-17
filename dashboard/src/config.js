@@ -186,28 +186,43 @@ export const PAGE2 = {
 }
 
 // ─── Page 3 · Mapbox Choropleth ──────────────────────────────────────────────
-// Required files:
-//   • Same neighborhood GeoJSON as Page 2, OR a separate one with richer
-//     properties for styling (e.g. including the value to map directly).
-//   • Your Mapbox public token (get one free at https://account.mapbox.com)
+// Data: LA Housing Affordability Index (HAI) by census tract
+//   Source: https://geohub.lacity.org
+//   File: la-hai-tracts.geojson
+//     → 914 census tract polygons, WGS84
+//     → property 'hai_cy'  : Housing Affordability Index (13–126)
+//     → property 'geoid'   : 11-digit FIPS census tract ID
+//     → property 'tract_name': human-readable tract label
+//   The HAI value is already embedded in each GeoJSON feature — no CSV join needed.
+//   HAI interpretation: index of 100 = perfectly affordable; <100 = less affordable.
 //
 export const PAGE3 = {
-    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
-
-    /** GeoJSON used as the Mapbox fill-color source. */
-    geoJSONPath: '/data/nyc/city-neighborhoods.geojson',
-
-    /** CSV with the values to join into the choropleth. */
-    csvPath: '/data/nyc/housing-units.csv',
-
-    joinKey: 'commntydst',
-
-    /** Default indicator to show on load. Must be a key in the CSV. */
-    defaultIndicator: 'comp2024',
-
-    /** Initial map center  [lng, lat]  and zoom level. */
-    center: [-73.94, 40.70],
-    zoom: 10,
+  mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
+ 
+  /** City name shown in the page header. */
+  cityName: 'Los Angeles',
+ 
+  /**
+   * GeoJSON with HAI_CY already embedded as 'hai_cy' property.
+   * No separate CSV join needed — value lives inside each feature.
+   */
+  geoJSONPath: '/data/la/la-hai-tracts.geojson',
+ 
+  /** The GeoJSON property that holds the numeric choropleth value. */
+  valueProperty: 'hai_cy',
+ 
+  /** Human-readable label for the legend and tooltip. */
+  valueLabel: 'Housing Affordability Index',
+ 
+  /** d3-format string for tooltip/legend values. */
+  valueFormat: '.0f',
+ 
+  /** Color ramp: low HAI (less affordable) → red; high HAI → green */
+  colorScheme: 'RdYlGn',
+ 
+  /** Initial map center [lng, lat] and zoom. */
+  center: [-118.35, 34.05],
+  zoom: 10,
 }
 
 // ─── Page 4 · Mapbox + deck.gl Layer A ───────────────────────────────────────
