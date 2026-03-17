@@ -46,6 +46,38 @@
                 <span>{{ availableYears.at(-1) ?? '-' }}</span>
               </div>
             </div>
+
+            <div class="col-12 d-flex flex-wrap align-items-center gap-2 gap-sm-3 pt-1">
+              <button
+                class="btn btn-sm"
+                :class="isPlaying ? 'btn-outline-danger' : 'btn-outline-primary'"
+                :disabled="availableYears.length < 2"
+                @click="togglePlayback"
+              >
+                {{ isPlaying ? 'Pause' : 'Play' }}
+              </button>
+
+              <div class="d-flex align-items-center gap-2">
+                <label for="speed-select" class="form-label mb-0 fw-semibold">Speed</label>
+                <select
+                  id="speed-select"
+                  class="form-select form-select-sm speed-select"
+                  v-model.number="playbackSpeedMs"
+                >
+                  <option
+                    v-for="opt in playbackSpeedOptions"
+                    :key="opt.value"
+                    :value="opt.value"
+                  >
+                    {{ opt.label }}
+                  </option>
+                </select>
+              </div>
+
+              <span class="small text-muted">
+                {{ isPlaying ? 'Animating through years...' : 'Animation paused' }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -90,7 +122,17 @@ export default {
       availableYears: [],
       valuesByCode: {},
       selectedIndicator: INDICATOR_OPTIONS[0],
-      requestCounter: 0
+      requestCounter: 0,
+      isPlaying: false,
+      playbackSpeedMs: 900,
+      playbackTimerId: null,
+      playbackSpeedOptions: [
+        { label: '0.5x (1800 ms)', value: 1800 },
+        { label: '1x (900 ms)', value: 900 },
+        { label: '1.5x (600 ms)', value: 600 },
+        { label: '2x (450 ms)', value: 450 },
+        { label: '3x (300 ms)', value: 300 }
+      ]
     }
   },
   computed: {
@@ -105,12 +147,21 @@ export default {
     indicatorKey: {
       immediate: true,
       handler() {
+        this.stopPlayback()
         this.loadSelectedIndicator()
       }
     },
     selectedYear() {
       this.applyYearValues()
+    },
+    playbackSpeedMs() {
+      if (this.isPlaying) {
+        this.restartPlaybackTimer()
+      }
     }
+  },
+  beforeUnmount() {
+    this.stopPlayback()
   },
   methods: {
     async loadSelectedIndicator() {
@@ -150,6 +201,63 @@ export default {
     updateYearFromIndex(event) {
       const idx = Number.parseInt(event.target.value, 10)
       this.selectedYear = this.availableYears[idx] ?? this.selectedYear
+    },
+    togglePlayback() {
+      if (this.isPlaying) {
+        this.stopPlayback()
+        return
+      }
+
+      if (this.availableYears.length < 2) {
+        return
+      }
+
+      if (this.selectedYear == null) {
+        this.selectedYear = this.availableYears[0]
+      }
+
+      // If selected the last year, loop back to the start on play
+      if (this.selectedYear === this.availableYears.at(-1)) {
+        this.selectedYear = this.availableYears[0]
+      }
+
+      this.isPlaying = true
+      this.restartPlaybackTimer()
+    },
+    restartPlaybackTimer() {
+      if (this.playbackTimerId != null) {
+        clearInterval(this.playbackTimerId)
+      }
+
+      this.playbackTimerId = setInterval(() => {
+        this.stepYearForward()
+      }, this.playbackSpeedMs)
+    },
+    stepYearForward() {
+      if (this.availableYears.length < 2) {
+        this.stopPlayback()
+        return
+      }
+
+      const currentIndex = this.availableYears.indexOf(this.selectedYear)
+      if (currentIndex < 0) {
+        this.selectedYear = this.availableYears[0]
+        return
+      }
+
+      if (currentIndex >= this.availableYears.length - 1) {
+        this.stopPlayback()
+        return
+      }
+
+      this.selectedYear = this.availableYears[currentIndex + 1]
+    },
+    stopPlayback() {
+      this.isPlaying = false
+      if (this.playbackTimerId != null) {
+        clearInterval(this.playbackTimerId)
+        this.playbackTimerId = null
+      }
     }
   }
 }
@@ -159,5 +267,9 @@ export default {
 .year-hints {
   color: #64748b;
   font-size: 0.85rem;
+}
+
+.speed-select {
+  width: 9.2rem;
 }
 </style>
