@@ -197,32 +197,38 @@ export const PAGE2 = {
 //   HAI interpretation: index of 100 = perfectly affordable; <100 = less affordable.
 //
 export const PAGE3 = {
-  mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
- 
-  /** City name shown in the page header. */
-  cityName: 'Los Angeles',
- 
-  /**
-   * GeoJSON with HAI_CY already embedded as 'hai_cy' property.
-   * No separate CSV join needed — value lives inside each feature.
-   */
-  geoJSONPath: '/data/la/la-hai-tracts.geojson',
- 
-  /** The GeoJSON property that holds the numeric choropleth value. */
-  valueProperty: 'hai_cy',
- 
-  /** Human-readable label for the legend and tooltip. */
-  valueLabel: 'Housing Affordability Index',
- 
-  /** d3-format string for tooltip/legend values. */
-  valueFormat: '.0f',
- 
-  /** Color ramp: low HAI (less affordable) → red; high HAI → green */
-  colorScheme: 'RdYlGn',
- 
-  /** Initial map center [lng, lat] and zoom. */
-  center: [-118.35, 34.05],
-  zoom: 10,
+    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
+
+    /** City name shown in the page header. */
+    cityName: 'Los Angeles',
+
+    /**
+     * GeoJSON with HAI_CY embedded in each tract feature.
+     * No separate CSV join needed for choropleth values.
+     */
+    geoJSONPath: '/data/la/la-hai-tracts.geojson',
+
+    /** Neighborhood council polygons used for spatial tooltip enrichment. */
+    neighborhoodGeoJSONPath: '/data/la/neighborhood-councils.geojson',
+
+    /** The GeoJSON property that holds the numeric choropleth value. */
+    valueProperty: 'HAI_CY',
+
+    /** Human-readable label for the legend and tooltip. */
+    valueLabel: 'Housing Affordability Index',
+
+    /** d3-format string for tooltip/legend values. */
+    valueFormat: '.0f',
+
+    /** More tolerant benchmark than 100 to avoid overly punitive interpretation. */
+    affordabilityBaseline: 85,
+
+    /** Color ramp: low HAI (higher cost pressure) → red; high HAI → green */
+    colorScheme: 'RdYlGn',
+
+    /** Initial map center [lng, lat] and zoom. */
+    center: [-118.35, 34.05],
+    zoom: 10,
 }
 
 // ─── Page 4 · Mapbox + deck.gl Layer A ───────────────────────────────────────
