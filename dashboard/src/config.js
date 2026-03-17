@@ -136,25 +136,36 @@ export const PAGE2 = {
     joinKey: 'commntydst',
 
     /**
-     * Selectable indicators.  key must match a column header in the CSV exactly.
-     * Numbers in the NYC housing CSV use comma thousands separators ("1,598");
-     * the CSV parser in Page2 strips those automatically.
+     * TIME SERIES — one metric across multiple years.
+     * Rendered as a clickable year timeline above the maps (not a dropdown).
+     * All keys must be columns in the CSV.  Add/remove years freely.
      */
-    indicators: [
-        { key: 'comp2024', label: 'Units Completed 2024', unit: 'units', format: ',.0f' },
-        { key: 'comp2023', label: 'Units Completed 2023', unit: 'units', format: ',.0f' },
-        { key: 'comp2022', label: 'Units Completed 2022', unit: 'units', format: ',.0f' },
-        { key: 'comp2021', label: 'Units Completed 2021', unit: 'units', format: ',.0f' },
-        { key: 'comp2020', label: 'Units Completed 2020', unit: 'units', format: ',.0f' },
-        { key: 'comp2019', label: 'Units Completed 2019', unit: 'units', format: ',.0f' },
-        { key: 'comp2018', label: 'Units Completed 2018', unit: 'units', format: ',.0f' },
-        { key: 'comp2017', label: 'Units Completed 2017', unit: 'units', format: ',.0f' },
-        { key: 'comp2016', label: 'Units Completed 2016', unit: 'units', format: ',.0f' },
-        { key: 'comp2015', label: 'Units Completed 2015', unit: 'units', format: ',.0f' },
-        { key: 'cenunits20', label: 'Census Housing Units 2020', unit: 'units', format: ',.0f' },
-        { key: 'filed', label: 'Filed Applications', unit: 'units', format: ',.0f' },
-        { key: 'permitted', label: 'Permitted Units', unit: 'units', format: ',.0f' },
-        // ── Add more city indicators here ───────────────────────────────────────
+    timeSeriesLabel: 'Net Housing Units Completed',
+    timeSeriesUnit: 'units',
+    timeSeriesFormat: ',.0f',
+    years: [
+        { key: 'comp2015', year: 2015 },
+        { key: 'comp2016', year: 2016 },
+        { key: 'comp2017', year: 2017 },
+        { key: 'comp2018', year: 2018 },
+        { key: 'comp2019', year: 2019 },
+        { key: 'comp2020', year: 2020 },
+        { key: 'comp2021', year: 2021 },
+        { key: 'comp2022', year: 2022 },
+        { key: 'comp2023', year: 2023 },
+        { key: 'comp2024', year: 2024 },
+    ],
+
+    /**
+     * SNAPSHOT INDICATORS — separate non-year metrics shown as pill toggles.
+     * Add more entries here as you gather additional indicator files/columns.
+     * key must match a column header in the CSV exactly.
+     */
+    snapshotIndicators: [
+        { key: 'cenunits20', label: 'Census Units 2020', unit: 'units', format: ',.0f' },
+        { key: 'filed', label: 'Filed', unit: 'units', format: ',.0f' },
+        { key: 'permitted', label: 'Permitted', unit: 'units', format: ',.0f' },
+        // ── Add more snapshot indicators here as you gather data ────────────────
     ],
 }
 
