@@ -16,6 +16,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.YOUR_MAPBOX_TOKEN_HERE'
+
 // ─── Page 1 · D3 World Maps ──────────────────────────────────────────────────
 // Required files:
 //   • World GeoJSON (country boundaries)
@@ -197,7 +199,7 @@ export const PAGE2 = {
 //   HAI interpretation: index of 100 = perfectly affordable; <100 = less affordable.
 //
 export const PAGE3 = {
-    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
+    mapboxToken: MAPBOX_TOKEN,
 
     /** City name shown in the page header. */
     cityName: 'Los Angeles',
@@ -238,7 +240,7 @@ export const PAGE3 = {
 //     NYC open data: https://opendata.cityofnewyork.us
 //
 export const PAGE4 = {
-    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
+    mapboxToken: MAPBOX_TOKEN,
 
     cityName: 'Los Angeles',
 
@@ -265,7 +267,7 @@ export const PAGE4 = {
 
 // ─── Page 5 · Mapbox + deck.gl Layer B ───────────────────────────────────────
 export const PAGE5 = {
-    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
+    mapboxToken: MAPBOX_TOKEN,
 
     dataPath: '/data/nyc/page5-data.geojson',
 
