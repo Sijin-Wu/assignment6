@@ -245,6 +245,12 @@ export const PAGE4 = {
     /** GeoJSON produced by filter_permits.py — Point features, one per permit. */
     dataPath: '/data/la/la-building-permits.geojson',
 
+    /** Inclusive year range exposed in the Page 4 UI filters and labels. */
+    yearRange: {
+        min: 2022,
+        max: 2025,
+    },
+
     /** deck.gl layer type rendered on this page. */
     layerType: 'HeatmapLayer',
 
