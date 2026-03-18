@@ -238,19 +238,22 @@ export const PAGE3 = {
 //     NYC open data: https://opendata.cityofnewyork.us
 //
 export const PAGE4 = {
-    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',   // can reuse PAGE3 token
+    mapboxToken: 'pk.YOUR_MAPBOX_TOKEN_HERE',
 
-    /**
-     * Path to the point dataset.
-     * Expected format: GeoJSON FeatureCollection of Point features  OR
-     *                  CSV with columns  latitude, longitude  (and any extras).
-     */
-    dataPath: '/data/nyc/page4-points.geojson',
+    cityName: 'Los Angeles',
 
-    /** deck.gl layer type used on this page (for your own documentation). */
-    layerType: 'ScatterplotLayer',   // change to match what you implement
+    /** GeoJSON produced by filter_permits.py — Point features, one per permit. */
+    dataPath: '/data/la/la-building-permits.geojson',
 
-    center: [-73.94, 40.70],
+    /** deck.gl layer type rendered on this page. */
+    layerType: 'HeatmapLayer',
+
+    /** Heatmap weight property — use 'valuation' so high-value projects
+     *  burn brighter, or set to null for uniform weight (density only). */
+    weightProperty: null,
+
+    /** Initial map view. */
+    center: [-118.35, 34.05],
     zoom: 10,
 }
 
