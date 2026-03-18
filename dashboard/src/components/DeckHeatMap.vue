@@ -1,9 +1,8 @@
 <template>
   <div class="card border-0 shadow-sm">
     <div class="card-header bg-transparent border-bottom d-flex align-items-center gap-2 flex-wrap">
-      <span class="fw-semibold">Building Permit Density · 2022–2024</span>
+      <span class="fw-semibold">Building Permit Density · 2020–2025</span>
 
-      <!-- Permit type filter pills -->
       <div class="d-flex flex-wrap gap-1 ms-2">
         <button
           v-for="t in permitTypes"
@@ -12,42 +11,41 @@
           :class="{ active: activeTypes.has(t.key) }"
           @click="toggleType(t.key)"
         >
+          <span class="pill-dot" :style="{ background: t.color }"></span>
           {{ t.label }}
         </button>
       </div>
 
-      <span class="badge text-bg-light border ms-auto">deck.gl HeatmapLayer</span>
+      <span class="badge text-bg-light border ms-auto">deck.gl ScatterplotLayer</span>
     </div>
 
     <div class="card-body p-0 position-relative">
-      <!-- Map container — deck.gl renders into this via the Mapbox overlay -->
       <div ref="mapContainer" class="map-container"></div>
 
-      <!-- Custom legend -->
       <div class="legend position-absolute bottom-0 start-0 m-3 p-2
                   bg-white bg-opacity-90 rounded shadow-sm">
-        <div class="legend-title mb-1">Permit density</div>
-        <div class="legend-bar"></div>
-        <div class="d-flex justify-content-between legend-labels">
-          <span>Low</span>
-          <span>High</span>
+        <div class="legend-title mb-2">Permit type</div>
+        <div v-for="t in permitTypes" :key="t.key"
+             class="d-flex align-items-center gap-2 mb-1 legend-row">
+          <span class="legend-dot" :style="{ background: t.color }"></span>
+          <span>{{ t.label }}</span>
         </div>
         <div class="mt-2 text-muted" style="font-size:0.7rem">
-          {{ visibleCount.toLocaleString() }} points rendered (from {{ rawCount.toLocaleString() }} permits)
+          {{ visibleCount.toLocaleString() }} permits shown
         </div>
       </div>
 
-      <!-- Loading overlay -->
       <div v-if="loading" class="map-overlay d-flex align-items-center justify-content-center">
         <div class="spinner-border text-secondary" role="status">
           <span class="visually-hidden">Loading…</span>
         </div>
       </div>
-
-      <!-- Error -->
       <div v-if="error" class="map-overlay d-flex align-items-center justify-content-center">
         <div class="alert alert-danger m-3">{{ error }}</div>
       </div>
+
+      <!-- Tooltip rendered by deck.gl onHover -->
+      <div id="deck-tooltip"></div>
     </div>
   </div>
 </template>
@@ -56,27 +54,29 @@
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { MapboxOverlay } from '@deck.gl/mapbox'
-import { HeatmapLayer } from '@deck.gl/aggregation-layers'
+import { ScatterplotLayer } from '@deck.gl/layers'
 import { PAGE4 } from '../config.js'
 
+// One color per permit type [r, g, b]
 const PERMIT_TYPES = [
-  { key: 'Bldg-New',         label: 'New Building' },
-  { key: 'Bldg-Alter/Repair',label: 'Alter / Repair' },
-  { key: 'Bldg-Addition',    label: 'Addition' },
-  { key: 'Swimming-Pool/Spa',label: 'Pool / Spa' },
-  { key: 'Bldg-Demolition',  label: 'Demolition' },
+  { key: 'Bldg-New',          label: 'New Building',   color: '#f97316', rgb: [249, 115,  22] },
+  { key: 'Bldg-Alter/Repair', label: 'Alter / Repair', color: '#3b82f6', rgb: [ 59, 130, 246] },
+  { key: 'Bldg-Addition',     label: 'Addition',       color: '#22c55e', rgb: [ 34, 197,  94] },
+  { key: 'Swimming-Pool/Spa', label: 'Pool / Spa',     color: '#a855f7', rgb: [168,  85, 247] },
+  { key: 'Bldg-Demolition',   label: 'Demolition',     color: '#ef4444', rgb: [239,  68,  68] },
 ]
+
+const COLOR_MAP = Object.fromEntries(PERMIT_TYPES.map(t => [t.key, t.rgb]))
 
 export default {
   name: 'DeckHeatmap',
 
   data() {
     return {
+      overlay:      null,
       map:          null,
-      deckOverlay:  null,
-      allFeatures:  [],       // filtered + normalized point rows
-      rawCount:     0,
-      activeTypes:  new Set(PERMIT_TYPES.map(t => t.key)),  // all on by default
+      allFeatures:  [],
+      activeTypes:  new Set(PERMIT_TYPES.map(t => t.key)),
       permitTypes:  PERMIT_TYPES,
       loading:      true,
       error:        null,
@@ -85,10 +85,9 @@ export default {
   },
 
   computed: {
-    // Filter features to only the active permit types
     visibleFeatures() {
       return this.allFeatures.filter(
-        f => this.activeTypes.has(f.permitType)
+        f => this.activeTypes.has(f.properties.permit_type)
       )
     },
   },
@@ -96,29 +95,31 @@ export default {
   watch: {
     visibleFeatures(features) {
       this.visibleCount = features.length
-      this.updateDeckLayer(features)
+      this.updateOverlay(features)
     },
   },
 
   mounted() {
-    this.initMap()
+    this.init()
   },
 
   beforeUnmount() {
-    this.deckOverlay?.finalize()
+    if (this.map && this.overlay) {
+      try { this.map.removeControl(this.overlay) } catch (_) {}
+    }
     this.map?.remove()
   },
 
   methods: {
-    async initMap() {
+    async init() {
       this.loading = true
       this.error   = null
 
-      // ── 1. Load GeoJSON ─────────────────────────────────────────────
+      // ── 1. Fetch data ──────────────────────────────────────────────
       let geojson
       try {
         const res = await fetch(PAGE4.dataPath)
-        if (!res.ok) throw new Error(`Fetch failed: ${res.status} — check dataPath in config.js`)
+        if (!res.ok) throw new Error(`Fetch failed: ${res.status}`)
         geojson = await res.json()
       } catch (err) {
         this.error   = err.message
@@ -126,108 +127,87 @@ export default {
         return
       }
 
-      const source = geojson.features ?? []
-      this.rawCount = source.length
-
-      // Normalize/validate input points for deck.gl (avoids silent no-render cases).
-      const normalized = source
-        .map((f) => {
-          const c = f?.geometry?.coordinates
-          const permitType = f?.properties?.permit_type
-          if (!Array.isArray(c) || c.length < 2) return null
-          const lng = Number(c[0])
-          const lat = Number(c[1])
-          if (!Number.isFinite(lng) || !Number.isFinite(lat)) return null
-          if (lng < -180 || lng > 180 || lat < -90 || lat > 90) return null
-
-          const w = PAGE4.weightProperty
-            ? Number(f?.properties?.[PAGE4.weightProperty])
-            : 1
-
-          return {
-            position: [lng, lat],
-            permitType,
-            weight: Number.isFinite(w) && w > 0 ? w : 1,
-          }
-        })
-        .filter(Boolean)
-
-      // GPU heatmap can fail silently on very large point sets on some machines.
-      // Keep a representative sample for rendering stability.
-      const MAX_RENDER_POINTS = 80000
-      const step = normalized.length > MAX_RENDER_POINTS
-        ? Math.ceil(normalized.length / MAX_RENDER_POINTS)
-        : 1
-      this.allFeatures = step === 1
-        ? normalized
-        : normalized.filter((_, idx) => idx % step === 0)
-
+      this.allFeatures  = geojson.features ?? []
       this.visibleCount = this.allFeatures.length
 
-      // ── 2. Init Mapbox ──────────────────────────────────────────────
+      // ── 2. Init Mapbox ─────────────────────────────────────────────
       mapboxgl.accessToken = PAGE4.mapboxToken
 
       this.map = new mapboxgl.Map({
-        container:  this.$refs.mapContainer,
-        style:      'mapbox://styles/mapbox/dark-v11',  // dark base suits heatmap
-        center:     PAGE4.center,
-        zoom:       PAGE4.zoom,
-        antialias:  true,
+        container: this.$refs.mapContainer,
+        style:     'mapbox://styles/mapbox/dark-v11',
+        center:    PAGE4.center,
+        zoom:      PAGE4.zoom,
+        antialias: true,
       })
 
       this.map.addControl(new mapboxgl.NavigationControl(), 'top-right')
-      this.map.addControl(new mapboxgl.ScaleControl(),      'bottom-right')
+      this.map.addControl(new mapboxgl.ScaleControl(), 'bottom-right')
 
-      // ── 3. Mount deck.gl overlay once map style is ready ───────────
+      // ── 3. Add deck.gl overlay ─────────────────────────────────────
+      // interleaved: true shares Mapbox's WebGL context — no canvas fight.
+      // ScatterplotLayer is used instead of HeatmapLayer because HeatmapLayer
+      // has a confirmed rendering bug in deck.gl v9 with MapboxOverlay.
       this.map.on('load', () => {
-        // Pass the initial layer directly into the constructor — this ensures
-        // deck.gl has the layer registered before the control is added to Mapbox
-        const initialLayer = this.buildHeatmapLayer(this.visibleFeatures)
-        this.deckOverlay = new MapboxOverlay({ interleaved: true, layers: [initialLayer] })
-        this.map.addControl(this.deckOverlay)
-        this.visibleCount = this.visibleFeatures.length
+        this.overlay = new MapboxOverlay({
+          interleaved: true,
+          layers: [this.buildScatterLayer(this.visibleFeatures)],
+        })
+        this.map.addControl(this.overlay)
         this.loading = false
       })
 
       this.map.on('error', e => {
         console.error('[DeckHeatmap]', e)
-        this.error   = 'Mapbox error — check your token in config.js'
+        this.error = 'Mapbox error — check your token in config.js'
         this.loading = false
       })
     },
 
-    // Build a fresh HeatmapLayer from a feature array
-    buildHeatmapLayer(features) {
-      return new HeatmapLayer({
-        id:           'building-heatmap',
-        data:         features,
-        getPosition:  d => d.position,
-        getWeight:    d => d.weight,
-        radiusPixels: 52,
-        intensity:    1.45,
-        threshold:    0,
-        colorDomain:  [0, 1],
-        aggregation:  'SUM',
-        colorRange: [
-          [0,   0,   255],
-          [0,   255, 200],
-          [255, 220, 0  ],
-          [255, 80,  0  ],
-          [255, 0,   0  ],
+    buildScatterLayer(features) {
+      return new ScatterplotLayer({
+        id:              'permits',
+        data:            features,
+        getPosition:     f => f.geometry.coordinates,
+        getFillColor:    f => [
+          ...(COLOR_MAP[f.properties.permit_type] ?? [200, 200, 200]),
+          60,   // alpha — low so overlapping points accumulate visually
         ],
+        getRadius:       40,        // metres
+        radiusMinPixels: 2,
+        radiusMaxPixels: 8,
+        pickable:        true,
+        stroked:         false,
+        onHover: ({ object, x, y }) => {
+          const tooltip = document.getElementById('deck-tooltip')
+          if (object) {
+            const p = object.properties
+            tooltip.style.display = 'block'
+            tooltip.style.left    = x + 'px'
+            tooltip.style.top     = y + 'px'
+            tooltip.innerHTML = `
+              <div class="tt-title">${p.address}</div>
+              <div class="tt-row">${p.permit_type} · ${p.use_desc}</div>
+              <div class="tt-row">Issued: ${p.issue_date} · Status: ${p.status}</div>
+              <div class="tt-row">Valuation: $${(p.valuation ?? 0).toLocaleString()}</div>
+              <div class="tt-desc">${p.work_desc}</div>
+            `
+          } else {
+            tooltip.style.display = 'none'
+          }
+        },
       })
     },
 
-    updateDeckLayer(features) {
-      if (!this.deckOverlay) return
-      this.deckOverlay.setProps({ layers: [this.buildHeatmapLayer(features)] })
+    updateOverlay(features) {
+      if (!this.overlay) return
+      this.overlay.setProps({ layers: [this.buildScatterLayer(features)] })
     },
 
     toggleType(key) {
-      // Vue can't detect Set mutations directly — rebuild the Set
       const next = new Set(this.activeTypes)
       if (next.has(key)) {
-        if (next.size === 1) return   // keep at least one type active
+        if (next.size === 1) return
         next.delete(key)
       } else {
         next.add(key)
@@ -243,17 +223,14 @@ export default {
   width: 100%;
   height: 580px;
 }
-
 .map-overlay {
   position: absolute;
   inset: 0;
   background: rgba(15, 15, 25, 0.6);
   z-index: 10;
 }
-
-/* Legend */
 .legend {
-  min-width: 160px;
+  min-width: 150px;
   font-size: 0.75rem;
   pointer-events: none;
   z-index: 5;
@@ -263,25 +240,18 @@ export default {
   font-size: 0.78rem;
   color: #1e293b;
 }
-.legend-bar {
-  height: 10px;
-  border-radius: 3px;
-  background: linear-gradient(to right,
-    rgba(0,128,255,0.7),
-    rgba(0,255,200,0.8),
-    rgba(255,220,0,0.9),
-    rgba(255,80,0,0.95),
-    rgba(255,0,0,1)
-  );
-  margin-bottom: 4px;
+.legend-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
 }
-.legend-labels {
-  color: #64748b;
-  font-size: 0.68rem;
-}
+.legend-row { font-size: 0.72rem; color: #334155; }
 
-/* Permit type filter pills */
 .pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 2px 10px;
   border-radius: 999px;
   border: 1.5px solid #e2e8f0;
@@ -292,15 +262,32 @@ export default {
   cursor: pointer;
   transition: all 0.15s;
   white-space: nowrap;
+  opacity: 0.45;
 }
-.pill-btn:hover {
-  border-color: #94a3b8;
-  color: #1e293b;
+.pill-btn.active  { opacity: 1; border-color: #94a3b8; }
+.pill-btn:hover   { border-color: #94a3b8; color: #1e293b; }
+.pill-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.pill-btn.active {
-  border-color: #f97316;
-  background: #fff7ed;
-  color: #c2410c;
-  font-weight: 600;
+</style>
+
+<style>
+#deck-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 999;
+  pointer-events: none;
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 0.78rem;
+  max-width: 280px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
 }
+#deck-tooltip .tt-title { font-weight:600; margin-bottom:4px; color:#f8fafc; }
+#deck-tooltip .tt-row   { color:#94a3b8; margin-bottom:2px; }
+#deck-tooltip .tt-desc  { color:#64748b; margin-top:4px; font-size:0.72rem; }
 </style>
