@@ -2,6 +2,9 @@
 
 ## How to Run the Dashboard
 
+### IMPORTANT INFORMATION ABOUT LARGE LA PERMIT FILES
+Since the LA building permits data is very large, the raw source and full output files cannot be committed to online repositories (e.g. GitHub) due to size limits. Instead, only small/sample files are kept in the repository. Read [LA Data Notes](dashboard/public/data/la/README.md) for instructions on how to download the raw data and regenerate the full GeoJSON file locally.
+
 > Clearly describe how to set up and run your project (e.g., `npm install` then `npm run dev`).
 
 ## Documentation & Reflection
