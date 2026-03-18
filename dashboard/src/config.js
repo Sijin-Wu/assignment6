@@ -242,8 +242,8 @@ export const PAGE4 = {
 
     cityName: 'Los Angeles',
 
-    /** GeoJSON produced by filter_permits.py — Point features, one per permit. */
-    dataPath: '/data/la/la-building-permits.geojson',
+    /** Sample GeoJSON committed to repo (small file, safe for GitHub). */
+    dataPath: '/data/la/la-building-permits-small.geojson',
 
     /** Inclusive year range exposed in the Page 4 UI filters and labels. */
     yearRange: {
