@@ -7,13 +7,13 @@ world indicators and city-level data for **New York City** and **Los Angeles**.
 
 ## Live Pages
 
-| Page | Title | Library | Layer / Chart type | Dataset |
-|------|-------|---------|-------------------|---------|
-| 1 | D3 World Maps | D3.js | Choropleth + Proportional symbol | World Bank (GDP, population) |
-| 2 | D3 + Vega City Maps | D3.js · Vega-Embed | Choropleth × 2 | NYC Housing Database |
-| 3 | Mapbox Choropleth | Mapbox GL JS | Fill layer | LA Housing Affordability Index |
-| 4 | Mapbox + deck.gl Scatter | Mapbox + deck.gl | `ScatterplotLayer` | LA Building Permits 2020–2025 |
-| 5 | Mapbox + deck.gl Arc | Mapbox + deck.gl | `ArcLayer` | LA 311 Service Requests 2023 |
+| Page | Title | Library | Layer / Chart type | Dataset | Geographic Area |
+|------|-------|---------|-------------------|---------|-----------------|
+| 1 | D3 World Maps | D3.js | Choropleth + Proportional symbol | World Bank (GDP, population) | World |
+| 2 | D3 + Vega City Maps | D3.js · Vega-Embed | Choropleth × 2 | NYC Housing Database | New York City |
+| 3 | Mapbox Choropleth | Mapbox GL JS | Fill layer | LA Housing Affordability Index | Los Angeles |
+| 4 | Mapbox + deck.gl Scatter | Mapbox + deck.gl | `ScatterplotLayer` | LA Building Permits 2020–2025 | Los Angeles |
+| 5 | Mapbox + deck.gl Arc | Mapbox + deck.gl | `ArcLayer` | LA 311 Service Requests 2023 | Los Angeles |
 
 ---
 
@@ -41,47 +41,51 @@ npm install
 
 ### 2. Add your Mapbox token
 
-Open `src/config.js` and replace every `'pk.YOUR_MAPBOX_TOKEN_HERE'` with your
-public token. Get a free token at https://account.mapbox.com.
+Create a `.env` file in the root of the project (same level as `package.json`) with the following content:
 
-### 3. Download world data (Page 1)
+```
+VITE_MAPBOX_TOKEN=pk.YOUR_MAPBOX_TOKEN_HERE
+```
 
-| File | Source |
-|------|--------|
-| `public/data/world/countries.geojson` | https://github.com/datasets/geo-countries |
-| `public/data/world/gdp.csv` | https://data.worldbank.org/indicator/NY.GDP.MKTP.CD |
-| `public/data/world/gdp_per_capita.csv` | https://data.worldbank.org/indicator/NY.GDP.PCAP.CD |
-| `public/data/world/population.csv` | https://data.worldbank.org/indicator/SP.POP.TOTL |
+Get a free token at https://account.mapbox.com.
 
-For World Bank files: click **Download → CSV**, unzip, rename to the filename above.
+### 3. (Optional) Generate the LA building permits file (Page 4)
 
-### 4. Generate the LA building permits file (Page 4)
+The full permit dataset is too large for GitHub, so this project only shows a small bunch of data in the Heatmap. 
 
-The full permit dataset is too large for GitHub. Download and filter it:
 
+![alt text](image.png)
+
+1. Download from [this page on LA Open Data](https://data.lacity.org/City-Infrastructure-Service-Requests/Building-and-Safety-Building-Permits-Issued-from-2/pi9x-tg5x)
+
+2. Export → CSV → save as `Building_and_Safety.csv`
+3. save in `public/data/la/Building_and_Safety.csv`
+4. run the filter script:
+
+*Unix / MacOS / Windows WSL:*
 ```bash
-# Download from LA Open Data:
-# https://data.lacity.org/City-Infrastructure-Service-Requests/
-#   Building-and-Safety-Building-Permits-Issued-from-2/pi9x-tg5x
-# Export → CSV → save as Building_and_Safety.csv
+cd public/data/la/
 
-# Then run the filter script:
 python scripts/filter_permits.py \
   --input  "Building_and_Safety.csv" \
   --output "public/data/la/la-building-permits.geojson" \
   --start  2020-01-01 \
   --end    2025-03-01
+```
 
-# Windows PowerShell — quote scoped args:
+*Windows PowerShell:*
+```powershell
+cd public/data/la/
+
 python scripts/filter_permits.py `
   --input  "Building_and_Safety.csv" `
   --output "public/data/la/la-building-permits.geojson" `
   --start  2020-01-01 --end 2025-03-01
 ```
 
-> **Skip this step?** The app falls back to `la-building-permits-sample.geojson`
-> (500 demo points). The map works but shows sparse data. See `src/config.js →
-> PAGE4.dataPath` to switch.
+> **Skip this step?** The app falls back to `public/data/la/la-building-permits-small.geojson` by default, which is a random sample of 8,327 permits from the full dataset. The map will work but show sparse data. 
+> 
+> See `src/config.js → PAGE4.dataPath` to switch.
 
 ### 5. Run the dev server
 
@@ -97,7 +101,7 @@ npm run dev
 .
 ├── public/
 │   └── data/
-│       ├── world/                         # Page 1 — downloaded by you
+│       ├── world/                         # Page 1 
 │       │   ├── countries.geojson
 │       │   ├── gdp.csv
 │       │   ├── gdp_per_capita.csv
@@ -111,7 +115,7 @@ npm run dev
 │           ├── la-neighborhood-councils.geojson  99 NC boundaries ✅
 │           ├── la-cd-offices.geojson        15 Council District office coords ✅
 │           ├── la-311-arcs.geojson          5k sampled 311 requests with arc coords ✅
-│           ├── la-building-permits-sample.geojson  500-row demo subset ✅
+│           ├── la-building-permits-sample.geojson  8327-row demo subset ✅
 │           └── la-building-permits.geojson  Full filtered permits ⚠ generate locally
 │
 ├── scripts/
@@ -181,9 +185,7 @@ npm run dev
 
 ## Configuration
 
-All data paths, Mapbox tokens, indicator definitions, and map centers live in
-**`src/config.js`**. This is the only file you need to edit for setup. No paths
-are hard-coded in any page or component.
+1. If you use the full LA permit dataset in Page 4, or other large datasets of your choice in any pages, update the path in `src/config.js`:
 
 ```js
 // Example: swap Page 4 to use the full permit dataset after running the script
@@ -192,6 +194,8 @@ export const PAGE4 = {
   ...
 }
 ```
+
+2. Remember to add a `.env` file with your Mapbox token as described in the Quick Start section.
 
 ---
 
