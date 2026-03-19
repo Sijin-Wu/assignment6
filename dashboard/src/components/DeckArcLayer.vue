@@ -138,7 +138,7 @@ function defaultDraft() {
     monthMin:  1,
     monthMax:  12,
     statuses:  new Set(['Open', 'Closed']),
-    arcWidth:  1.5,
+    arcWidth:  2,
   }
 }
 
@@ -156,9 +156,10 @@ export default {
       requestTypes: PAGE5.requestTypes,
       statusOptions: ['Open', 'Closed'],
       months:       MONTHS,
-      loading:      true,
-      error:        null,
-      visibleCount: 0,
+      loading:            true,
+      error:              null,
+      visibleCount:       0,
+
       draft:        d,
       applied:      { ...d, statuses: new Set(d.statuses) },
     }
@@ -246,8 +247,11 @@ export default {
 
       // ── 3. deck.gl overlay ─────────────────────────────────────────
       this.map.on('load', () => {
+        // ArcLayer is 3D geometry — it requires interleaved:false so deck.gl
+        // renders in its own canvas on top of Mapbox. Unlike HeatmapLayer,
+        // ArcLayer has no z-fighting with flat map tiles so there is no flicker.
         this.overlay = new MapboxOverlay({
-          interleaved: true,
+          interleaved: false,
           layers: this.buildLayers(this.filteredFeatures),
         })
         this.map.addControl(this.overlay)
@@ -270,12 +274,12 @@ export default {
         data:            this.cdFeatures,
         getPosition:     f => f.geometry.coordinates,
         getFillColor:    [255, 255, 255, 220],
-        getRadius:       400,
+        getRadius:       150,          // metres — reduced from 400 (was too large)
         radiusMinPixels: 5,
-        radiusMaxPixels: 12,
+        radiusMaxPixels: 10,
         stroked:         true,
         getLineColor:    [255, 255, 255, 255],
-        lineWidthMinPixels: 2,
+        lineWidthMinPixels: 1.5,
         pickable:        true,
         onHover: ({ object, x, y }) => {
           const el = document.getElementById('arc-tooltip')
@@ -306,14 +310,15 @@ export default {
         // Color source end by request type
         getSourceColor: f => [
           ...(TYPE_COLOR[f.properties.request_type] ?? [200, 200, 200]),
-          160,
+          200,
         ],
 
         // Color target end white so all arcs converge visibly at offices
         getTargetColor: [255, 255, 255, 80],
 
         getWidth:   arcWidth,
-        getHeight:  0.3,     // arc curvature (0 = straight, 1 = very curved)
+        widthScale: 1,
+        getHeight:  0.5,     // arc curvature — increased for better visibility
         pickable:   true,
 
         onHover: ({ object, x, y }) => {
