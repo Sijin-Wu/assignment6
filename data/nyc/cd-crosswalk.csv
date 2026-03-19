@@ -1,0 +1,72 @@
+boro_cd,borough,boro_abbrev,cd_number,cd_name,boro_cd_str,boro_cd_short
+101,Manhattan,MN,1,Battery Park City / Financial District / Greenwich Village,Manhattan CD 1,MN01
+102,Manhattan,MN,2,Greenwich Village / SoHo,Manhattan CD 2,MN02
+103,Manhattan,MN,3,Lower East Side / Chinatown,Manhattan CD 3,MN03
+104,Manhattan,MN,4,Chelsea / Clinton / Hell's Kitchen,Manhattan CD 4,MN04
+105,Manhattan,MN,5,Midtown Business District,Manhattan CD 5,MN05
+106,Manhattan,MN,6,Murray Hill / Gramercy / Stuyvesant Town,Manhattan CD 6,MN06
+107,Manhattan,MN,7,Upper West Side,Manhattan CD 7,MN07
+108,Manhattan,MN,8,Upper East Side,Manhattan CD 8,MN08
+109,Manhattan,MN,9,Morningside Heights / Hamilton Heights / West Harlem,Manhattan CD 9,MN09
+110,Manhattan,MN,10,Central Harlem,Manhattan CD 10,MN10
+111,Manhattan,MN,11,East Harlem,Manhattan CD 11,MN11
+112,Manhattan,MN,12,Washington Heights / Inwood,Manhattan CD 12,MN12
+164,Manhattan,MN,64,Central Park,Manhattan CD 64,MN64
+201,Bronx,BX,1,Melrose / Mott Haven / Port Morris,Bronx CD 1,BX01
+202,Bronx,BX,2,Hunts Point / Longwood,Bronx CD 2,BX02
+203,Bronx,BX,3,Morrisania / Crotona Park East / Belmont,Bronx CD 3,BX03
+204,Bronx,BX,4,Concourse / Highbridge / Morris Heights,Bronx CD 4,BX04
+205,Bronx,BX,5,Fordham / University Heights / Morris Heights,Bronx CD 5,BX05
+206,Bronx,BX,6,Belmont / East Tremont / West Farms,Bronx CD 6,BX06
+207,Bronx,BX,7,Bedford Park / Fiorello H. LaGuardia / Norwood / Williamsbridge,Bronx CD 7,BX07
+208,Bronx,BX,8,Riverdale / Fieldston / Kingsbridge,Bronx CD 8,BX08
+209,Bronx,BX,9,Parkchester / Soundview / Unionport,Bronx CD 9,BX09
+210,Bronx,BX,10,Throgs Neck / Co-op City,Bronx CD 10,BX10
+211,Bronx,BX,11,Pelham Parkway / Morris Park / Laconia,Bronx CD 11,BX11
+212,Bronx,BX,12,Williamsbridge / Baychester / Wakefield,Bronx CD 12,BX12
+226,Bronx,BX,26,Bronx Park & Pelham Parkway (Park District),Bronx CD 26,BX26
+227,Bronx,BX,27,Bronx-Westchester (Airport District),Bronx CD 27,BX27
+228,Bronx,BX,28,Bronx Shore (Park District),Bronx CD 28,BX28
+301,Brooklyn,BK,1,Greenpoint / Williamsburg,Brooklyn CD 1,BK01
+302,Brooklyn,BK,2,Fort Greene / Brooklyn Heights / DUMBO / Boerum Hill,Brooklyn CD 2,BK02
+303,Brooklyn,BK,3,Bedford-Stuyvesant,Brooklyn CD 3,BK03
+304,Brooklyn,BK,4,Bushwick,Brooklyn CD 4,BK04
+305,Brooklyn,BK,5,East New York / Starrett City,Brooklyn CD 5,BK05
+306,Brooklyn,BK,6,Park Slope / Carroll Gardens / Red Hook,Brooklyn CD 6,BK06
+307,Brooklyn,BK,7,Sunset Park / Windsor Terrace,Brooklyn CD 7,BK07
+308,Brooklyn,BK,8,Crown Heights North / Prospect Heights,Brooklyn CD 8,BK08
+309,Brooklyn,BK,9,Crown Heights South / Prospect Lefferts / Wingate,Brooklyn CD 9,BK09
+310,Brooklyn,BK,10,Bay Ridge / Fort Hamilton / Dyker Heights,Brooklyn CD 10,BK10
+311,Brooklyn,BK,11,Bensonhurst / Bath Beach,Brooklyn CD 11,BK11
+312,Brooklyn,BK,12,Borough Park / Kensington / Ocean Parkway,Brooklyn CD 12,BK12
+313,Brooklyn,BK,13,Coney Island / Brighton Beach / Sea Gate,Brooklyn CD 13,BK13
+314,Brooklyn,BK,14,Flatbush / Midwood,Brooklyn CD 14,BK14
+315,Brooklyn,BK,15,Sheepshead Bay / Gerritsen Beach / Marine Park,Brooklyn CD 15,BK15
+316,Brooklyn,BK,16,Brownsville,Brooklyn CD 16,BK16
+317,Brooklyn,BK,17,East Flatbush / Farragut / Rugby,Brooklyn CD 17,BK17
+318,Brooklyn,BK,18,Canarsie / Flatlands,Brooklyn CD 18,BK18
+355,Brooklyn,BK,55,Prospect Park (Park District),Brooklyn CD 55,BK55
+356,Brooklyn,BK,56,Brooklyn Greenway / Shore Parkway (Park District),Brooklyn CD 56,BK56
+401,Queens,QN,1,Astoria / Long Island City,Queens CD 1,QN01
+402,Queens,QN,2,Sunnyside / Woodside,Queens CD 2,QN02
+403,Queens,QN,3,Jackson Heights / North Corona,Queens CD 3,QN03
+404,Queens,QN,4,Elmhurst / South Corona / Maspeth,Queens CD 4,QN04
+405,Queens,QN,5,Ridgewood / Glendale / Middle Village,Queens CD 5,QN05
+406,Queens,QN,6,Forest Hills / Rego Park,Queens CD 6,QN06
+407,Queens,QN,7,Flushing / Murray Hill / Whitestone,Queens CD 7,QN07
+408,Queens,QN,8,Hillcrest / Fresh Meadows / Jamaica Hills,Queens CD 8,QN08
+409,Queens,QN,9,Richmond Hill / Woodhaven / Ozone Park,Queens CD 9,QN09
+410,Queens,QN,10,South Ozone Park / Howard Beach / Jamaica Bay,Queens CD 10,QN10
+411,Queens,QN,11,Bayside / Douglaston / Little Neck,Queens CD 11,QN11
+412,Queens,QN,12,Jamaica / Hollis / St. Albans,Queens CD 12,QN12
+413,Queens,QN,13,Queens Village / Cambria Heights / Rosedale,Queens CD 13,QN13
+414,Queens,QN,14,Rockaway / Broad Channel,Queens CD 14,QN14
+480,Queens,QN,80,Flushing Meadows–Corona Park (Park District),Queens CD 80,QN80
+481,Queens,QN,81,Queens Shore (Park District),Queens CD 81,QN81
+482,Queens,QN,82,Jamaica Bay (Park District),Queens CD 82,QN82
+483,Queens,QN,83,JFK Airport (Airport District),Queens CD 83,QN83
+484,Queens,QN,84,LaGuardia Airport (Airport District),Queens CD 84,QN84
+501,Staten Island,SI,1,St. George / Stapleton / Port Richmond,Staten Island CD 1,SI01
+502,Staten Island,SI,2,Willowbrook / New Springville / South Beach,Staten Island CD 2,SI02
+503,Staten Island,SI,3,Tottenville / Great Kills / Annadale,Staten Island CD 3,SI03
+595,Staten Island,SI,95,Staten Island Greenbelt (Park District),Staten Island CD 95,SI95
