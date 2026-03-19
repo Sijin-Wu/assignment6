@@ -109,7 +109,7 @@
         <div class="alert alert-danger m-3">{{ error }}</div>
       </div>
 
-      <div id="deck-tooltip"></div>
+      <div ref="deckTooltip" class="deck-tooltip"></div>
     </div>
   </div>
 </template>
@@ -332,13 +332,16 @@ export default {
         pickable:        true,
         stroked:         false,
         onHover: ({ object, x, y }) => {
-          const el = document.getElementById('deck-tooltip')
+          const el = this.$refs.deckTooltip
           if (!el) return
           if (object) {
             const p = object.properties
+            const rect = this.$refs.mapContainer?.getBoundingClientRect()
+            const left = rect ? rect.left + x + 12 : x + 12
+            const top = rect ? rect.top + y + 12 : y + 12
             el.style.display = 'block'
-            el.style.left    = x + 'px'
-            el.style.top     = y + 'px'
+            el.style.left    = left + 'px'
+            el.style.top     = top + 'px'
             el.innerHTML = `
               <div class="tt-title">${p.address}</div>
               <div class="tt-row">${p.permit_type} · ${p.use_desc}</div>
@@ -440,13 +443,13 @@ export default {
 </style>
 
 <style>
-#deck-tooltip {
+.deck-tooltip {
   display:none; position:fixed; z-index:999; pointer-events:none;
   background:#1e293b; color:#f1f5f9; border-radius:8px;
   padding:10px 14px; font-size:0.78rem; max-width:280px;
   box-shadow:0 4px 16px rgba(0,0,0,0.4);
 }
-#deck-tooltip .tt-title { font-weight:600; margin-bottom:4px; color:#f8fafc; }
-#deck-tooltip .tt-row   { color:#94a3b8; margin-bottom:2px; }
-#deck-tooltip .tt-desc  { color:#64748b; margin-top:4px; font-size:0.72rem; }
+.deck-tooltip .tt-title { font-weight:600; margin-bottom:4px; color:#f8fafc; }
+.deck-tooltip .tt-row   { color:#94a3b8; margin-bottom:2px; }
+.deck-tooltip .tt-desc  { color:#64748b; margin-top:4px; font-size:0.72rem; }
 </style>
