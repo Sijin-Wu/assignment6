@@ -4,7 +4,7 @@
       <h2 class="mb-1">Page 5: Mapbox + deck.gl Arc Layer</h2>
       <p class="page-description mb-4">
         311 service requests in {{ cityName }} flowing to their assigned
-        Council District office · Jan–Mar 2023.
+        Council District office · filter by week range.
       </p>
       <DeckArcLayer />
     </section>

@@ -289,5 +289,5 @@ export const PAGE5 = {
     ],
 
     center: [-118.35, 34.05],
-    zoom: 10,
+    zoom: 9,
 }
