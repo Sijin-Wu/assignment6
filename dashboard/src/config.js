@@ -269,11 +269,25 @@ export const PAGE4 = {
 export const PAGE5 = {
     mapboxToken: MAPBOX_TOKEN,
 
-    dataPath: '/data/nyc/page5-data.geojson',
+    cityName: 'Los Angeles',
 
-    /** Must be a DIFFERENT deck.gl layer type than Page 4. */
-    layerType: 'HexagonLayer',       // change to match what you implement
+    /** GeoJSON with arc source + target coordinates embedded in properties. */
+    dataPath: '/data/la/la-311-arcs.geojson',
 
-    center: [-73.94, 40.70],
+    /** Small GeoJSON of the 15 CD office locations (used as arc targets). */
+    cdOfficesPath: '/data/la/la-cd-offices.geojson',
+
+    /** deck.gl layer type rendered on this page. */
+    layerType: 'ArcLayer',
+
+    /** 4 request types and their display colors. */
+    requestTypes: [
+        { key: 'Bulky Items', label: 'Bulky Items', color: '#f97316', rgb: [255, 165, 0] },
+        { key: 'Graffiti Removal', label: 'Graffiti', color: '#3b82f6', rgb: [59, 130, 246] },
+        { key: 'Illegal Dumping Pickup', label: 'Illegal Dumping', color: '#22c55e', rgb: [34, 197, 94] },
+        { key: 'Homeless Encampment', label: 'Homeless', color: '#ef4444', rgb: [239, 68, 68] },
+    ],
+
+    center: [-118.35, 34.05],
     zoom: 10,
 }
