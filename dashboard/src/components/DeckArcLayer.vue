@@ -16,20 +16,28 @@
 
     <div class="filter-bar border-bottom px-3 py-2 d-flex flex-wrap align-items-end gap-3">
       <div class="filter-group">
-        <label class="filter-label">Week</label>
-        <div class="d-flex align-items-center gap-2">
-          <select class="form-select form-select-sm week-select" v-model.number="draft.weekMin">
-            <option v-for="w in weeks" :key="w.val" :value="w.val" :disabled="w.val > draft.weekMax">
-              {{ w.label }}
-            </option>
-          </select>
-          <span class="text-muted small">–</span>
-          <select class="form-select form-select-sm week-select" v-model.number="draft.weekMax">
-            <option v-for="w in weeks" :key="w.val" :value="w.val" :disabled="w.val < draft.weekMin">
-              {{ w.label }}
-            </option>
-          </select>
+        <label class="filter-label">Date range</label>
+        <div class="date-range-wrap">
+          <input
+            class="form-range date-range date-range--start"
+            type="range"
+            min="0"
+            :max="Math.max(0, dateOptions.length - 1)"
+            step="1"
+            v-model.number="draft.startIdx"
+            @input="syncDraftRange('start')"
+          >
+          <input
+            class="form-range date-range date-range--end"
+            type="range"
+            min="0"
+            :max="Math.max(0, dateOptions.length - 1)"
+            step="1"
+            v-model.number="draft.endIdx"
+            @input="syncDraftRange('end')"
+          >
         </div>
+        <div class="small text-muted mt-1">{{ startDateLabel }} – {{ endDateLabel }}</div>
       </div>
 
       <div class="filter-group">
@@ -110,34 +118,8 @@ import { PAGE5 } from '../config.js'
 
 const TYPE_COLOR = Object.fromEntries(PAGE5.requestTypes.map(t => [t.key, t.rgb]))
 
-const MONTHS = [
-  { val:1,label:'Jan'},{val:2,label:'Feb'},{val:3,label:'Mar'},
-  {val:4,label:'Apr'},{val:5,label:'May'},{val:6,label:'Jun'},
-  {val:7,label:'Jul'},{val:8,label:'Aug'},{val:9,label:'Sep'},
-  {val:10,label:'Oct'},{val:11,label:'Nov'},{val:12,label:'Dec'},
-]
-
 function defaultDraft() {
-  return { weekMin:1, weekMax:60, statuses: new Set(['Open','Closed']), arcWidth:3 }
-}
-
-const WEEK_ORDINAL = ['First', 'Second', 'Third', 'Fourth', 'Fifth']
-
-function parseWeekIndex(createdDate) {
-  if (!createdDate) return null
-  const dt = new Date(createdDate)
-  if (Number.isNaN(dt.getTime())) return null
-  const month = dt.getMonth() + 1
-  const weekOfMonth = Math.min(5, Math.floor((dt.getDate() - 1) / 7) + 1)
-  return (month - 1) * 5 + weekOfMonth
-}
-
-function weekLabel(weekIndex) {
-  const month = Math.floor((weekIndex - 1) / 5) + 1
-  const weekOfMonth = ((weekIndex - 1) % 5) + 1
-  const monthName = MONTHS.find(m => m.val === month)?.label ?? `M${month}`
-  const ordinal = WEEK_ORDINAL[Math.max(0, Math.min(4, weekOfMonth - 1))] ?? `Week ${weekOfMonth}`
-  return `${ordinal} week of ${monthName}`
+  return { startIdx: 0, endIdx: 0, statuses: new Set(['Open','Closed']), arcWidth:3 }
 }
 
 export default {
@@ -151,7 +133,7 @@ export default {
       activeTypes:  new Set(PAGE5.requestTypes.map(t => t.key)),
       requestTypes: PAGE5.requestTypes,
       statusOptions: ['Open','Closed'],
-      weeks: [],
+      dateOptions: [],
       loading: true, error: null, visibleCount: 0,
       draft: d,
       applied: { ...d, statuses: new Set(d.statuses) },
@@ -160,18 +142,28 @@ export default {
 
   computed: {
     pendingChanges() {
-      const a = this.applied, d = this.draft
-      return a.weekMin !== d.weekMin || a.weekMax !== d.weekMax
+      const a = this.applied
+      const d = this.draft
+      return a.startIdx !== d.startIdx
+          || a.endIdx !== d.endIdx
           || a.arcWidth !== d.arcWidth
           || [...d.statuses].some(s => !a.statuses.has(s))
           || [...a.statuses].some(s => !d.statuses.has(s))
     },
+    startDateLabel() {
+      if (!this.dateOptions.length) return '-'
+      return this.dateOptions[Math.max(0, Math.min(this.draft.startIdx, this.dateOptions.length - 1))]?.label ?? '-'
+    },
+    endDateLabel() {
+      if (!this.dateOptions.length) return '-'
+      return this.dateOptions[Math.max(0, Math.min(this.draft.endIdx, this.dateOptions.length - 1))]?.label ?? '-'
+    },
     filteredFeatures() {
-      const { weekMin, weekMax, statuses } = this.applied
+      const { startIdx, endIdx, statuses } = this.applied
       return this.allFeatures.filter(f => {
         const p = f.properties
         if (!this.activeTypes.has(p.request_type)) return false
-        if (p._weekIndex == null || p._weekIndex < weekMin || p._weekIndex > weekMax) return false
+        if (p._dateIdx == null || p._dateIdx < startIdx || p._dateIdx > endIdx) return false
         if (!statuses.has(p.status)) return false
         return true
       })
@@ -205,19 +197,40 @@ export default {
         if (!cdRes.ok)  throw new Error(`CD offices: ${cdRes.status}`)
         const [arcGeo, cdGeo] = await Promise.all([arcRes.json(), cdRes.json()])
         this.allFeatures = arcGeo.features ?? []
-        const availableWeekSet = new Set()
+        const availableDateSet = new Set()
         this.allFeatures.forEach((f) => {
-          const idx = parseWeekIndex(f?.properties?.created_date)
-          f.properties._weekIndex = idx
-          if (idx != null) availableWeekSet.add(idx)
+          const key = String(f?.properties?.created_date ?? '').slice(0, 10)
+          if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+            f.properties._dateKey = key
+            availableDateSet.add(key)
+          } else {
+            f.properties._dateKey = null
+          }
         })
-        const orderedWeeks = [...availableWeekSet].sort((a, b) => a - b)
-        this.weeks = orderedWeeks.map((idx) => ({ val: idx, label: weekLabel(idx) }))
-        if (orderedWeeks.length) {
-          const weekMin = orderedWeeks[0]
-          const weekMax = orderedWeeks[orderedWeeks.length - 1]
-          this.draft = { ...this.draft, weekMin, weekMax }
-          this.applied = { ...this.applied, weekMin, weekMax }
+        const orderedDates = [...availableDateSet].sort((a, b) => a.localeCompare(b))
+        this.dateOptions = orderedDates.map((key) => {
+          const dt = new Date(`${key}T00:00:00`)
+          const label = Number.isNaN(dt.getTime())
+            ? key
+            : dt.toLocaleDateString('en-US', { month: 'short', day: '2-digit' })
+          return { key, label }
+        })
+        const indexByKey = new Map(orderedDates.map((key, idx) => [key, idx]))
+        this.allFeatures.forEach((f) => {
+          const key = f?.properties?._dateKey
+          f.properties._dateIdx = key && indexByKey.has(key) ? indexByKey.get(key) : null
+        })
+        if (orderedDates.length) {
+          const initialized = {
+            ...this.draft,
+            startIdx: 0,
+            endIdx: orderedDates.length - 1,
+          }
+          this.draft = initialized
+          this.applied = {
+            ...initialized,
+            statuses: new Set(initialized.statuses),
+          }
         }
         this.cdFeatures  = cdGeo.features  ?? []
         this.visibleCount = this.allFeatures.length
@@ -273,7 +286,7 @@ export default {
 
       // Draw initial layers once Mapbox style loads
       this.map.on('load', () => {
-        this.updateLayers(this.filteredFeatures)
+        this.scheduleInitialRender()
         this.loading = false
       })
 
@@ -293,9 +306,9 @@ export default {
         data:            this.cdFeatures,
         getPosition:     f => f.geometry.coordinates,
         getFillColor:    [255, 215, 60, 240],
-        getRadius:       120,
-        radiusMinPixels: 5,
-        radiusMaxPixels: 10,
+        getRadius:       260,
+        radiusMinPixels: 8,
+        radiusMaxPixels: 15,
         stroked:         true,
         getLineColor:    [255, 255, 255, 200],
         lineWidthMinPixels: 1.5,
@@ -367,6 +380,20 @@ export default {
       this.deck.setProps({ layers: this.buildLayers(features) })
     },
 
+    scheduleInitialRender() {
+      const renderNow = () => this.updateLayers(this.filteredFeatures)
+
+      // Render after map settles so deck canvas and basemap are in sync.
+      if (this.map && this.map.loaded()) {
+        this.map.once('idle', () => {
+          renderNow()
+          setTimeout(renderNow, 180)
+        })
+      } else {
+        setTimeout(renderNow, 220)
+      }
+    },
+
     toggleType(key) {
       const next = new Set(this.activeTypes)
       if (next.has(key)) { if (next.size === 1) return; next.delete(key) }
@@ -379,13 +406,26 @@ export default {
       else next.add(s)
       this.draft = { ...this.draft, statuses: next }
     },
+    syncDraftRange(boundary) {
+      const maxIdx = Math.max(0, this.dateOptions.length - 1)
+      let startIdx = Math.max(0, Math.min(this.draft.startIdx, maxIdx))
+      let endIdx = Math.max(0, Math.min(this.draft.endIdx, maxIdx))
+      if (boundary === 'start' && startIdx > endIdx) startIdx = endIdx
+      if (boundary === 'end' && endIdx < startIdx) endIdx = startIdx
+      this.draft = { ...this.draft, startIdx, endIdx }
+    },
     applyFilters() {
       this.applied = { ...this.draft, statuses: new Set(this.draft.statuses) }
     },
     resetFilters() {
       const d = defaultDraft()
-      this.draft   = d
-      this.applied = { ...d, statuses: new Set(d.statuses) }
+      const resetState = {
+        ...d,
+        startIdx: 0,
+        endIdx: Math.max(0, this.dateOptions.length - 1),
+      }
+      this.draft = resetState
+      this.applied = { ...resetState, statuses: new Set(resetState.statuses) }
       this.activeTypes = new Set(PAGE5.requestTypes.map(t => t.key))
     },
   },
@@ -415,7 +455,72 @@ export default {
   font-size: 0.72rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;
 }
-.week-select { width: 160px; }
+.date-range-wrap {
+  position: relative;
+  width: 260px;
+  height: 28px;
+}
+
+.date-range-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 11px;
+  height: 6px;
+  border-radius: 999px;
+  background: #dbe3ee;
+}
+
+.date-range {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  margin: 0;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+.date-range--start { z-index: 2; }
+.date-range--end { z-index: 3; }
+
+.date-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.date-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  margin-top: -6px;
+  border: 2px solid #ffffff;
+  background: #0d6efd;
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.35);
+  pointer-events: auto;
+}
+
+.date-range::-moz-range-track {
+  height: 6px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.date-range::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  background: #0d6efd;
+  box-shadow: 0 0 0 1px rgba(13, 110, 253, 0.35);
+  pointer-events: auto;
+}
 
 .pill-btn {
   display: inline-flex; align-items: center; gap: 5px;
